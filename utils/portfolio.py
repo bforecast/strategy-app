@@ -22,22 +22,36 @@ connection, cursor = init_connection()
 
 class Portfolio(object):
     def __init__(self):
-        self.pf_df = pd.read_sql("SELECT * FROM portfolio", connection)
-        # self.pf_df.set_index('id', inplace=True)
+        self.df = pd.read_sql("SELECT * FROM portfolio", connection)
+        # self.df.set_index('id', inplace=True)
 
     def get_df(self):
-        return self.pf_df
+        return self.df
 
-    def add(self, name, stock_list, description, start_date, end_date, filename:str, strategy_param:dict, strategy:str, market:str, pf)->bool:
+    def add(self, symbolsDate_dict, strategy, strategy_param, pf)->bool:
+            market = symbolsDate_dict['market']
+            symbols = symbolsDate_dict['symbols']
+            start_date = symbolsDate_dict['start_date']
+            end_date = symbolsDate_dict['end_date']
+
+            name = strategy + '_' + '&'.join(symbols)
+            filename = str(int(datetime.now().timestamp())) + '.pf'
+            pf.save(config.PORTFOLIO_PATH + filename)
+            total_return = round(pf.stats('total_return')[0], 2)
+            sharpe_ratio = round(pf.stats('sharpe_ratio')[0], 2)
+            maxdrawdown = round(pf.stats('max_dd')[0], 2)
+            annual_return = round(pf.annualized_return(), 2)
+            description = strategy
+            
             try:
-                tickers = "','".join(stock_list)
+                tickers = "','".join(symbols)
                 tickers = "'" + tickers + "'"
                 sql_stat = f"SELECT * FROM stock WHERE symbol in ({tickers})"
                 cursor.execute(sql_stat)
                 stocks = cursor.fetchall()
-                if len(stocks) == len(stock_list):
+                if len(stocks) == len(symbols):
                     param_json = json.dumps(strategy_param)
-                    tickers = ','.join(stock_list)
+                    tickers = ','.join(symbols)
 
                     total_return = round(pf.stats('total_return')[0], 2)
                     sharpe_ratio = round(pf.stats('sharpe_ratio')[0], 2)
@@ -46,9 +60,9 @@ class Portfolio(object):
                     
                     sql_stat = "INSERT INTO portfolio (name, description, create_date, start_date, end_date, total_return, annual_return, sharpe_ratio, maxdrawdown, filename, param_dict, strategy, symbols, market)" + \
                                 f" VALUES('{name}','{description}','{datetime.today()}','{start_date}','{end_date}',{total_return},{annual_return},{sharpe_ratio},{maxdrawdown},'{filename}','{param_json}','{strategy}','{tickers}','{market}')"
-                    sql_stat = sql_stat + " RETURNING id;"
+                    # sql_stat = sql_stat + " RETURNING id;"
                     cursor.execute(sql_stat)
-                    strategy = cursor.fetchone()
+                    # strategy = cursor.fetchone()
                     connection.commit()
                 else:
                     print("some of stocks are invalid.")
@@ -66,7 +80,7 @@ class Portfolio(object):
             sql_stat = f"DELETE FROM portfolio WHERE id= {id}"
             cursor.execute(sql_stat)
             connection.commit()
-            filename = self.pf_df.loc[self.pf_df['id']==id, 'filename'].values[0]
+            filename = self.df.loc[self.df['id']==id, 'filename'].values[0]
             os.remove(config.PORTFOLIO_PATH + filename)
             return True
         except Exception  as e:
@@ -77,12 +91,12 @@ class Portfolio(object):
     def update(self, id)->bool:
         end_date= date.today()
         end_date = datetime(year=end_date.year, month=end_date.month, day=end_date.day, tzinfo=pytz.utc)
-        market = self.pf_df.loc[self.pf_df['id']==id, 'market'].values[0]
-        symbols = self.pf_df.loc[self.pf_df['id']==id, 'symbols'].values[0].split(',')
-        strategy = self.pf_df.loc[self.pf_df['id']==id, 'strategy'].values[0]
-        start_date = self.pf_df.loc[self.pf_df['id']==id, 'start_date'].values[0]
-        param_dict = self.pf_df.loc[self.pf_df['id']==id, 'param_dict'].values[0]
-        ofilename = self.pf_df.loc[self.pf_df['id']==id, 'filename'].values[0]
+        market = self.df.loc[self.df['id']==id, 'market'].values[0]
+        symbols = self.df.loc[self.df['id']==id, 'symbols'].values[0].split(',')
+        strategy = self.df.loc[self.df['id']==id, 'strategy'].values[0]
+        start_date = self.df.loc[self.df['id']==id, 'start_date'].values[0]
+        param_dict = self.df.loc[self.df['id']==id, 'param_dict'].values[0]
+        ofilename = self.df.loc[self.df['id']==id, 'filename'].values[0]
         Data = AKData(market)
         symbol_list = symbols.copy()
         price_df = pd.DataFrame()

@@ -14,9 +14,9 @@ from bokeh.models import DataTable, TableColumn
 from bokeh.plotting import figure
 from streamlit_bokeh_events import streamlit_bokeh_events
 
-from utils.db import init_connection, load_portfolio, load_symbols
+from utils.db import init_connection, load_symbols
 from utils.vbt_nb import show_pf, plot_pf
-from utils.component import button_DeletePortfolio, check_password, button_UpdatePortfolio
+from utils.component import check_password
 from utils.portfolio import Portfolio
 
 def show_PortfolioTable(portfolio_df):
@@ -69,21 +69,21 @@ def show_StockTable():
 def main():
         st.header("Portfolio Board")
         portfolio = Portfolio()
-        portfolio_df = portfolio.get_df()
-        selected_portfolio = show_PortfolioTable(portfolio_df)
-        if selected_portfolio > -1 and selected_portfolio in portfolio_df.index:
-            st.info('Selected portfolio:    ' + portfolio_df.at[selected_portfolio, 'name'])
+        # portfolio.df = portfolio.df
+        selected_portfolio = show_PortfolioTable(portfolio.df)
+        if selected_portfolio > -1 and selected_portfolio in portfolio.df.index:
+            st.info('Selected portfolio:    ' + portfolio.df.at[selected_portfolio, 'name'])
             col1, col2, col3, col4 = st.columns([1, 1, 1, 4])
             with col1:
-                st.metric('Annualized', "{0:.0%}".format(portfolio_df.at[selected_portfolio, 'annual_return']))
+                st.metric('Annualized', "{0:.0%}".format(portfolio.df.at[selected_portfolio, 'annual_return']))
             with col2:
-                st.metric('Sharpe Ratio', '%.2f'% portfolio_df.at[selected_portfolio, 'sharpe_ratio'])
+                st.metric('Sharpe Ratio', '%.2f'% portfolio.df.at[selected_portfolio, 'sharpe_ratio'])
             with col3:
-                st.metric('Max DD %', '%.0f'% portfolio_df.at[selected_portfolio, 'maxdrawdown'])
+                st.metric('Max DD %', '%.0f'% portfolio.df.at[selected_portfolio, 'maxdrawdown'])
             with col4:
                 st.text('Parameters')
-                if portfolio_df.at[selected_portfolio, 'param_dict']:
-                    st.text([(k,v) for k,v in (portfolio_df.at[selected_portfolio, 'param_dict']).items()])
+                if portfolio.df.at[selected_portfolio, 'param_dict']:
+                    st.text([(k,v) for k,v in (portfolio.df.at[selected_portfolio, 'param_dict']).items()])
 
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -94,15 +94,15 @@ def main():
                 deletepf_bool = st.button('Delete')
 
             if showpf_bool:
-                show_pf(portfolio_df.loc[selected_portfolio, 'filename'])
+                show_pf(portfolio.df.loc[selected_portfolio, 'filename'])
             if updatepf_bool:
-                if portfolio.update(portfolio_df.loc[selected_portfolio, 'id']):
+                if portfolio.update(portfolio.df.loc[selected_portfolio, 'id']):
                     st.success('Update portfolio Sucessfully.')
                     st.experimental_rerun()
                 else:
                     st.error('Fail to Update portfolio.')
             if deletepf_bool:
-                if portfolio.delete(portfolio_df.loc[selected_portfolio, 'id']):
+                if portfolio.delete(portfolio.df.loc[selected_portfolio, 'id']):
                     st.success('Delete portfolio Sucessfully.')
                     st.experimental_rerun()
                 else:
