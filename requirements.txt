@@ -1,0 +1,21 @@
+streamlit
+pandas
+plotly
+psycopg2
+requests
+tweepy
+numpy
+alpaca_trade_api
+asyncpg
+aiohttp
+asyncio
+psaw
+snscrape
+TA-lib --no-binary=TA-lib
+matplotlib
+pyfolio
+quantstats
+vectorbt
+akshare
+PyPortfolioOpt
+streamlit_bokeh_events
