@@ -34,79 +34,28 @@ def get_MomInd():
     
     return MomInd
 
-def MOM_MaxSR(symbol:str, price):        
-        st.subheader('Search The Parameters for Max Sharpe Ratio')
-        # stock_df.index = pd.to_datetime(stock_df['date'])
-        # prices = stock_df['close']
-        windows = np.arange(5, 30)
-        uppers = np.arange(0, 0.1, 0.01)
-        lowers = np.arange(0, 0.1, 0.01)
+class MOMStrategy(BaseStrategy):
+    '''Mom strategy'''
+    _name = "MOM"
+    param_dict = {}
+
+    def run(self, output_bool=False):
+        windows = self.param_dict['window']
+        uppers = self.param_dict['upper']
+        lowers = self.param_dict['lower']
+        price = self.ohlcv_list[0][1].close
+        symbol = self.ohlcv_list[0][0]
+
+        if output_bool:
+            st.write("Calculate stock " + symbol)
+
         mom_indicator = get_MomInd().run(price, window=windows, lower=lowers, upper=uppers,\
             param_product=True)
         entries = mom_indicator.entry_signal
         exits = mom_indicator.exit_signal
         pf = vbt.Portfolio.from_signals(price, entries, exits, fees=0.002, freq='1D')
-        idxmax = (pf.total_return().idxmax())
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write('Max Return: (Period, Lower, Upper)')
-        with col2:
-            st.write(idxmax)
-        # Draw all window combinations as a 3D volume
-        fig = pf.total_return().vbt.volume(
-            x_level='mom_upper',
-            y_level='mom_lower',
-            z_level='mom_window',
-
-            trace_kwargs=dict(
-                colorbar=dict(
-                    title='Total return', 
-                    tickformat='%'
-                )
-            )
-        )
-        st.plotly_chart(fig)
-        idxmax = (pf.sharpe_ratio().idxmax())
-        return_pf = pf[idxmax]
-        plot_pf(return_pf)
-        param_dict = dict(zip(['window', 'lower', 'upper'], [int(idxmax[0]), round(idxmax[1], 2), round(idxmax[2], 2)]))
-        return param_dict, return_pf
-
-def update(price, strategy_param:dict):
-    """
-        update the strategy with the param dictiorary saved in portfolio
-    """
-    mom_indicator = get_MomInd().run(price, 
-                        window=strategy_param['window'],
-                        lower=strategy_param['lower'],
-                        upper=strategy_param['upper'],
-                        param_product=True)
-    entries = mom_indicator.entry_signal
-    exits = mom_indicator.exit_signal
-    pf = vbt.Portfolio.from_signals(price, entries, exits, fees=0.002, freq='1D')
-    return pf
-
-
-class MomStrategy(BaseStrategy):
-    '''Mom strategy'''
-    _name = "Mom"
-
-    def maxSR(self, plot_bool:bool):
-        windows = np.arange(5, 30)
-        uppers = np.arange(0, 0.1, 0.01)
-        lowers = np.arange(0, 0.1, 0.01)
-        mom_indicator = get_MomInd().run(self.price_df[:0], window=windows, lower=lowers, upper=uppers,\
-            param_product=True)
-        entries = mom_indicator.entry_signal
-        exits = mom_indicator.exit_signal
-        pf = vbt.Portfolio.from_signals(self.price_df[:0], entries, exits, fees=0.002, freq='1D')
-        idxmax = (pf.total_return().idxmax())
-        if plot_bool:
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write('Max Return: (Window, Lower, Upper)')
-            with col2:
-                st.write(idxmax)
+        
+        if output_bool:
             # Draw all window combinations as a 3D volume
             fig = pf.total_return().vbt.volume(
                 x_level='mom_upper',
@@ -122,25 +71,24 @@ class MomStrategy(BaseStrategy):
             )
             st.plotly_chart(fig)
 
-        idxmax = (pf.sharpe_ratio().idxmax())
-        return_pf = pf[idxmax]
-        if plot_bool:
-            plot_pf(return_pf)
-        
-        param_dict = dict(zip(['window', 'lower', 'upper'], [int(idxmax[0]), round(idxmax[1], 2), round(idxmax[2], 2)]))
-        return param_dict, return_pf
-        
-
-    def update(self, strategy_param:dict):
-        """
-            update the strategy with the param dictiorary saved in portfolio
-        """
-        mom_indicator = get_MomInd().run(self.price_df[:0], 
-                            window=strategy_param['window'],
-                            lower=strategy_param['lower'],
-                            upper=strategy_param['upper'],
-                            param_product=True)
-        entries = mom_indicator.entry_signal
-        exits = mom_indicator.exit_signal
-        pf = vbt.Portfolio.from_signals(self.price_df[:0], entries, exits, fees=0.002, freq='1D')
+        if len(windows) > 1:
+            idxmax = (pf.sharpe_ratio().idxmax())
+            pf = pf[idxmax]
+            self.param_dict = dict(zip(['window', 'lower', 'upper'], [int(idxmax[0]), round(idxmax[1], 4), round(idxmax[2], 4)]))
         return pf
+                
+
+
+    def maxSR(self, output_bool=False):
+        self.param_dict = {
+            "window":   np.arange(5, 30),
+            'upper':    np.arange(0, 0.1, 0.01),
+            'lower':    np.arange(0, 0.1, 0.01)
+        }
+
+        pf = self.run(output_bool)
+        if output_bool:
+            plot_pf(pf)
+       
+        return self.param_dict, pf
+    

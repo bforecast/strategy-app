@@ -145,6 +145,7 @@ class AKData(object):
     def download(self, symbol:str, start_date:datetime.datetime, end_date:datetime.datetime) -> pd.DataFrame:
         stock_df = pd.DataFrame()
         symbol_df = load_symbol(symbol)
+
         if len(symbol_df)==1:  #self.symbol_dict.keys():
                 if self.market =="CN" and len(symbol) > 6:
                     func = 'get_cn_index'
