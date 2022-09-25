@@ -74,7 +74,7 @@ class Portfolio(object):
             print("...", e)
             connection.rollback()
             return False
-        
+        self.__init__()
         return True
 
     def delete(self, id)->bool:
@@ -94,6 +94,7 @@ class Portfolio(object):
             connection.commit()
             filename = self.df.loc[self.df['id']==id, 'filename'].values[0]
             os.remove(config.PORTFOLIO_PATH + filename)
+            self.__init__()
             return True
         except Exception  as e:
             print("'Fail to Delete the Portfolio...", e)

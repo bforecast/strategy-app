@@ -18,6 +18,7 @@ from utils.db import init_connection, load_symbols
 from utils.vbt_nb import show_pf, plot_pf
 from utils.component import check_password
 from utils.portfolio import Portfolio
+import config
 
 def show_PortfolioTable(portfolio_df):
         portfolio_df = portfolio_df[['name', 'annual_return', 'sharpe_ratio', 'total_return', 'maxdrawdown', 'start_date', 'end_date']]
@@ -45,45 +46,58 @@ def show_PortfolioTable(portfolio_df):
                 )
             )
 
-        table = DataTable(source=cds, columns=columns, row_height=30, 
+        table = DataTable(source=cds, columns=columns, row_height=30, selectable="checkbox",
                                 index_position = None, aspect_ratio='auto', scroll_to_selection=True, height=300)
 
         result = streamlit_bokeh_events(
                     bokeh_plot=table,
                     events="INDEX_SELECT",
                     key="foo",
-                    refresh_on_update=True,
-                    debounce_time=0,
+                    refresh_on_update=False,
+                    debounce_time=10,
                     override_height=300
                 )
 
         if result and result.get("INDEX_SELECT"):
-            return result.get("INDEX_SELECT")["data"][0]
+            return result.get("INDEX_SELECT")["data"]
         else:
-            return -1
-
-def show_StockTable():
-    symbols_df = load_symbols()
-    st.table(symbols_df)
+            return []
 
 def main():
-        st.header("Portfolio Board")
-        portfolio = Portfolio()
-        # portfolio.df = portfolio.df
-        selected_portfolio = show_PortfolioTable(portfolio.df)
+    st.header("Portfolio Board")
+    portfolio = Portfolio()
+    selected_pfs = show_PortfolioTable(portfolio.df)
+    if len(selected_pfs) > 1:
+        pf_df = pd.DataFrame()
+        for pfid in selected_pfs:
+            filename = portfolio.df.iloc[pfid].at['filename']
+            pf = vbt.Portfolio.load(config.PORTFOLIO_PATH + '/' + filename)
+            pf_df[portfolio.df.iloc[pfid].at['name']] = pf.returns()
+        st.line_chart(pf_df.cumsum())
+
+    elif len(selected_pfs) ==1 :
+        selected_portfolio = selected_pfs[0]      
         if selected_portfolio > -1 and selected_portfolio in portfolio.df.index:
             st.info('Selected portfolio:    ' + portfolio.df.at[selected_portfolio, 'name'])
-            col1, col2, col3, col4 = st.columns([1, 1, 1, 4])
-            with col1:
+            param_dict = portfolio.df.at[selected_portfolio, 'param_dict']
+
+            cols = st.columns(3 + len(param_dict))
+            with cols[0]:
                 st.metric('Annualized', "{0:.0%}".format(portfolio.df.at[selected_portfolio, 'annual_return']))
-            with col2:
+            with cols[1]:
                 st.metric('Sharpe Ratio', '%.2f'% portfolio.df.at[selected_portfolio, 'sharpe_ratio'])
-            with col3:
+            with cols[2]:
                 st.metric('Max DD %', '%.0f'% portfolio.df.at[selected_portfolio, 'maxdrawdown'])
-            with col4:
-                st.text('Parameters')
-                if portfolio.df.at[selected_portfolio, 'param_dict']:
-                    st.text([(k,v) for k,v in (portfolio.df.at[selected_portfolio, 'param_dict']).items()])
+            # with col4:
+                # st.text('Parameters')
+                # if portfolio.df.at[selected_portfolio, 'param_dict']:
+                #     st.text([(k,v) for k,v in (portfolio.df.at[selected_portfolio, 'param_dict']).items()])
+            i = 3
+            for k, v in param_dict.items():
+                with cols[i]:
+                    st.metric(k, v)
+                i = i + 1
+
 
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -98,15 +112,15 @@ def main():
             if updatepf_bool:
                 if portfolio.update(portfolio.df.loc[selected_portfolio, 'id']):
                     st.success('Update portfolio Sucessfully.')
-                    st.experimental_rerun()
                 else:
                     st.error('Fail to Update portfolio.')
+                st.experimental_rerun()
             if deletepf_bool:
                 if portfolio.delete(portfolio.df.loc[selected_portfolio, 'id']):
                     st.success('Delete portfolio Sucessfully.')
-                    st.experimental_rerun()
                 else:
                     st.error('Fail to delete portfolio.')
+                st.experimental_rerun()
 
 
 if __name__ == "__main__":

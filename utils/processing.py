@@ -104,6 +104,9 @@ def get_cn_index(symbol:st, start_date:str, end_date:str) -> pd.DataFrame:
         pd.DataFrame: _description_
     """
     result_df = ak.stock_zh_index_daily_em(symbol=symbol)
+    start_date = start_date[0:4] + '-' + start_date[4:6] + '-' + start_date[6:]
+    end_date = end_date[0:4] + '-' + end_date[4:6] + '-' + end_date[6:]
+
     result_df = result_df[(result_df['date'] >= start_date) & (result_df['date'] <= end_date)]
     return result_df
 
