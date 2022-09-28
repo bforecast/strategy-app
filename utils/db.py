@@ -34,5 +34,10 @@ def load_symbol(symbol:str):
         # cursor.execute("SELECT strategy_id, symbol, exchange, name FROM strategy_stock \
         #                     JOIN stock ON stock.id = strategy_stock.stock_id")
         # symbols_df = cursor.fetchall()
-        result_df = pd.read_sql(f"SELECT * FROM stock WHERE symbol='{symbol}'", connection)
-        return result_df
+        try:
+            result_df = pd.read_sql(f"SELECT * FROM stock WHERE symbol='{symbol}'", connection)
+            return result_df
+
+        except Exception as e:
+            st.error(f"Connnecting Database Error: {e}")
+            return None

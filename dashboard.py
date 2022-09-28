@@ -53,8 +53,8 @@ def show_PortfolioTable(portfolio_df):
                     bokeh_plot=table,
                     events="INDEX_SELECT",
                     key="foo",
-                    refresh_on_update=False,
-                    debounce_time=10,
+                    refresh_on_update=True,
+                    # debounce_time=10,
                     override_height=300
                 )
 
@@ -65,6 +65,7 @@ def show_PortfolioTable(portfolio_df):
 
 def main():
     st.header("Portfolio Board")
+    selected_pfs = []
     portfolio = Portfolio()
     selected_pfs = show_PortfolioTable(portfolio.df)
     if len(selected_pfs) > 1:
@@ -73,9 +74,12 @@ def main():
             filename = portfolio.df.iloc[pfid].at['filename']
             pf = vbt.Portfolio.load(config.PORTFOLIO_PATH + '/' + filename)
             pf_df[portfolio.df.iloc[pfid].at['name']] = pf.returns()
-        st.line_chart(pf_df.cumsum())
+        pf_df = pf_df.cumsum()
+        pf_df.fillna(method='ffill', inplace=True)
+        pf_df['mean'] = pf_df.mean(axis=1)
+        st.line_chart(pf_df)
 
-    elif len(selected_pfs) ==1 :
+    elif len(selected_pfs) == 1 :
         selected_portfolio = selected_pfs[0]      
         if selected_portfolio > -1 and selected_portfolio in portfolio.df.index:
             st.info('Selected portfolio:    ' + portfolio.df.at[selected_portfolio, 'name'])
@@ -88,10 +92,6 @@ def main():
                 st.metric('Sharpe Ratio', '%.2f'% portfolio.df.at[selected_portfolio, 'sharpe_ratio'])
             with cols[2]:
                 st.metric('Max DD %', '%.0f'% portfolio.df.at[selected_portfolio, 'maxdrawdown'])
-            # with col4:
-                # st.text('Parameters')
-                # if portfolio.df.at[selected_portfolio, 'param_dict']:
-                #     st.text([(k,v) for k,v in (portfolio.df.at[selected_portfolio, 'param_dict']).items()])
             i = 3
             for k, v in param_dict.items():
                 with cols[i]:
@@ -99,7 +99,7 @@ def main():
                 i = i + 1
 
 
-            col1, col2, col3 = st.columns(3)
+            col1, col2, col3 = st.columns([3, 1, 1])
             with col1:
                 showpf_bool = st.checkbox("Show the Portfolio")
             with col2:
@@ -113,15 +113,26 @@ def main():
                 if portfolio.update(portfolio.df.loc[selected_portfolio, 'id']):
                     st.success('Update portfolio Sucessfully.')
                 else:
-                    st.error('Fail to Update portfolio.')
+                    st.error('Fail to update portfolio.')
                 st.experimental_rerun()
             if deletepf_bool:
                 if portfolio.delete(portfolio.df.loc[selected_portfolio, 'id']):
                     st.success('Delete portfolio Sucessfully.')
                 else:
                     st.error('Fail to delete portfolio.')
+                selected_pfs = []
                 st.experimental_rerun()
+    else:
+        if st.button("Update All"):
+            update_bar = st.progress(0)
+            num_portfolio = len(portfolio.df)
+            for i in range(num_portfolio):
+                st.write(f"update portfolio('{portfolio.df.loc[i, 'name']}')")
+                if not portfolio.update(portfolio.df.loc[i, 'id']):
+                    st.error(f"Fail to update portfolio('{portfolio.df.loc[i, 'name']}')")
+                update_bar.progress(i / (num_portfolio-1))
 
+            st.experimental_rerun()
 
 if __name__ == "__main__":
     if check_password():

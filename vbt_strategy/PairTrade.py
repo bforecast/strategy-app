@@ -1,11 +1,7 @@
 import numpy as np
 import pandas as pd
-import datetime
-import collections
-import math
-import pytz
+
 from numba import njit
-import scipy.stats as stats
 import vectorbt as vbt
 from statsmodels.tsa.stattools import coint
 
@@ -181,90 +177,33 @@ def order_func_nb(c, size, price, commperc):
             direction=Direction.LongOnly
         )
 
-def PairTrade(ohlcv1, ohlcv2, symbol1, symbol2):
-    #initialize Parameters
-    window = 100
-    CASH = 100000
-    COMMPERC = 0.005  # 0.5%
-    ORDER_PCT1 = 0.95   #0.1
-    ORDER_PCT2 = 0.95   #0.1
-    UPPER = stats.norm.ppf(1 - 0.05 / 2)
-    LOWER = -stats.norm.ppf(1 - 0.05 / 2)
-    MODE = 'OLS'  # OLS, log_return
-
-    score, pvalue, _ = coint(ohlcv1['close'],ohlcv2['close'])
-    st.write(f"P-Value is {pvalue}")
-
-    symbol_cols = pd.Index([symbol1, symbol2], name='symbol')
-    vbt_close_price = pd.concat((ohlcv1['close'], ohlcv2['close']), axis=1, keys=symbol_cols)
-    vbt_open_price = pd.concat((ohlcv1['open'], ohlcv2['open']), axis=1, keys=symbol_cols)
-
-    windows = np.arange(10, 105, 5)
-    uppers = np.arange(1.5, 2.2, 0.1)
-    lowers = -1 * np.arange(1.5, 2.2, 0.1)
-
-    def simulate_mult_from_order_func(windows, uppers, lowers):
-        """Simulate multiple parameter combinations using `Portfolio.from_order_func`."""
-        # Build param grid
-        param_product = vbt.utils.params.create_param_product([windows, uppers, lowers])
-        param_tuples = list(zip(*param_product))
-        param_columns = pd.MultiIndex.from_tuples(param_tuples, names=['window', 'upper', 'lower'])
-        
-        # We need two price columns per param combination
-        vbt_close_price_mult = vbt_close_price.vbt.tile(len(param_columns), keys=param_columns)
-        vbt_open_price_mult = vbt_open_price.vbt.tile(len(param_columns), keys=param_columns)
-        
-        return vbt.Portfolio.from_order_func(
-            vbt_close_price_mult,
-            order_func_nb, 
-            vbt_open_price_mult.values, COMMPERC,  # *args for order_func_nb
-            pre_group_func_nb=pre_group_func_nb, 
-            pre_group_args=(
-                np.array(param_product[0]), 
-                np.array(param_product[1]), 
-                np.array(param_product[2]), 
-                ORDER_PCT1, 
-                ORDER_PCT2
-            ),
-            pre_segment_func_nb=pre_segment_func_nb, 
-            pre_segment_args=(MODE,),
-            fill_pos_record=False,
-            init_cash=CASH,
-            cash_sharing=True, 
-            group_by=param_columns.names,
-            freq='d'
-        )
-
-    vbt_pf_mult = simulate_mult_from_order_func(windows, uppers, lowers)
-    # Draw all window combinations as a 3D volume
-    st.plotly_chart(
-        vbt_pf_mult.total_return().vbt.volume(
-                x_level='upper',
-                y_level='lower',
-                z_level='window',
-
-                trace_kwargs=dict(
-                    colorbar=dict(
-                        title='Total return', 
-                        tickformat='%'
-                    )
-                )
-            )
-        )
-    # Max Sharpe_ratio Parameter    
-    idxmax = (vbt_pf_mult.sharpe_ratio().idxmax())
-    return_pf = vbt_pf_mult[idxmax]
-    plot_pf(return_pf)
-
-    param_dict = dict(zip(['window', 'upper', 'lower'], [int(idxmax[0]), round(idxmax[1], 2), round(idxmax[2]), 2]))
-    st.write(param_dict)
-    return param_dict, return_pf
-
-    
 class PairTradeStrategy(BaseStrategy):
     '''PairTrade strategy'''
     _name = "PairTrade"
     param_dict = {}
+    param_def = [
+            {
+            "name": "window",
+            "type": "int",
+            "min":  10,
+            "max":  105,
+            "step": 5   
+            },
+            {
+            "name": "upper",
+            "type": "float",
+            "min":  1.5,
+            "max":  2.2,
+            "step": 0.1   
+            },
+            {
+            "name": "lower",
+            "type": "float",
+            "min":  1.5,
+            "max":  2.2,
+            "step": 0.1   
+            },
+        ]
 
     def run(self, output_bool=False):
         #initialize Parameters
@@ -345,22 +284,11 @@ class PairTradeStrategy(BaseStrategy):
             self.param_dict = dict(zip(['window', 'upper', 'lower'], [int(idxmax[0]), round(idxmax[1], 4), round(idxmax[2], 4)]))
         else:
             pf =vbt_pf_mult
-        return pf
+        self.pf =pf
 
-    def maxSR(self, output_bool=False):
-        self.param_dict = {
-            "window":   np.arange(10, 105, 5),
-            'upper':    np.arange(1.5, 2.2, 0.1),
-            'lower':    np.arange(1.5, 2.2, 0.1)
-        }
-
-        # score, pvalue, _ = coint(ohlcv1['close'], ohlcv2['close'])
-        # if output_bool:
-        #     st.write(f"P-Value is {pvalue}")
-
-        pf = self.run(output_bool)
-        if output_bool:
-            plot_pf(pf)
-       
-        return self.param_dict, pf
+    def maxSR(self, param, output_bool=False):
+        if len(self.ohlcv_list) >1:
+            super(PairTradeStrategy, self).maxSR(param, output_bool)
+        else:
+            return False
     

@@ -1,18 +1,10 @@
-import os
 from datetime  import datetime, date
-from tracemalloc import start
 import pytz
-import pandas as pd
+import numpy as np
 
 import streamlit as st
-import vectorbt as vbt
-
 from utils.portfolio import Portfolio
-from utils.processing import AKData
-from utils.vbt_nb import plot_pf
-from vbt_strategy import MOM, PairTrade
 
-import config
 
 
 def input_symbols():
@@ -37,18 +29,6 @@ def input_dates():
     start_date = datetime(year=start_date.year, month=start_date.month, day=start_date.day, tzinfo=pytz.utc)
     end_date = datetime(year=end_date.year, month=end_date.month, day=end_date.day, tzinfo=pytz.utc)
     return start_date, end_date
-
-# def button_SavePortfolio(market:str, symbols, strategy:str, strategy_param:dict, pf, start_date,end_date):
-#     col1, col2 = st.columns([1,4])
-#     with col1:
-#         button_save = st.button("Save")
-#     with col2:
-#         if button_save:
-#             portfolio = Portfolio()
-#             if portfolio.add(market, symbols, strategy, strategy_param, pf, start_date, end_date):
-#                 st.success("Save the portfolio sucessfully.")
-#             else:
-#                 st.error('Fail to save the portfolio.')
 
 def button_SavePortfolio(symbolsDate_dict, strategy:str, strategy_param:dict, pf):
     col1, col2 = st.columns([1,4])
@@ -157,3 +137,25 @@ def input_SymbolsDate() -> dict:
             "start_date": start_date,
             "end_date": end_date,
         }
+
+def params_selector_ui(params):
+    params_parse = dict()
+    st.write("Optimization Parameters:")
+    for param in params:
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            gap = (param["max"]-param["min"]) * 0.5
+            if param['type'] == 'int':
+                gap = int(gap)
+                bottom = max(0, param["min"] - gap)
+            else:
+                bottom = max(0.0, param["min"] - gap)
+
+            values =st.slider("Select a range of " + param["name"],
+                            bottom, param['max'] + gap, (param["min"], param["max"]))
+        with col2:
+            step_number = st.number_input("step " + param["name"], value=param["step"])
+
+        params_parse[param["name"]] = np.arange(values[0], values[1], step_number)
+
+    return params_parse

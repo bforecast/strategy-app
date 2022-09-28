@@ -1,19 +1,17 @@
-from asyncio.proactor_events import _ProactorBasePipeTransport
-import numpy as np
 import pandas as pd
-from datetime import datetime
 
 import streamlit as st
-import vectorbt as vbt
 
-from utils.vbt_nb import plot_pf
 from utils.processing import AKData
+from utils.vbt_nb import plot_pf
+
 
 
 class BaseStrategy(object):
     '''base strategy'''
     _name = "base"
     param_dict ={}
+    param_def ={}
 
     def __init__(self, symbolsDate_dict:dict):
         market = symbolsDate_dict['market']
@@ -34,17 +32,22 @@ class BaseStrategy(object):
     def log(self, txt, dt=None, doprint=False):
         pass
 
-    def maxSR(self):
-        pass
+    def maxSR(self, param, output_bool=False):
+        self.param_dict = param
+        self.run(output_bool)
+        if output_bool:
+            plot_pf(self.pf)
+       
+        return True
 
     def update(self, param_dict:dict):
         """
             update the strategy with the param dictiorary saved in portfolio
         """
-        self.param_dict['window'] = [param_dict['window']]
-        self.param_dict['upper'] = [param_dict['upper']]
-        self.param_dict['lower'] = [param_dict['lower']]
+        self.param_dict = {}
+        for k, v in param_dict.items():
+            self.param_dict[k] = [v]
 
-        pf = self.run()
-        return pf    
+        self.run()
+        return self.pf    
 

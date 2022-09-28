@@ -1,6 +1,4 @@
 import numpy as np
-import pandas as pd
-from datetime import datetime
 
 from numba import njit
 import streamlit as st
@@ -38,6 +36,29 @@ class MOMStrategy(BaseStrategy):
     '''Mom strategy'''
     _name = "MOM"
     param_dict = {}
+    param_def = [
+            {
+            "name": "window",
+            "type": "int",
+            "min":  5,
+            "max":  30,
+            "step": 1   
+            },
+            {
+            "name": "upper",
+            "type": "float",
+            "min":  0.0,
+            "max":  0.1,
+            "step": 0.01   
+            },
+            {
+            "name": "lower",
+            "type": "float",
+            "min":  0.0,
+            "max":  0.1,
+            "step": 0.01   
+            },
+    ]
 
     def run(self, output_bool=False):
         windows = self.param_dict['window']
@@ -45,9 +66,6 @@ class MOMStrategy(BaseStrategy):
         lowers = self.param_dict['lower']
         price = self.ohlcv_list[0][1].close
         symbol = self.ohlcv_list[0][0]
-
-        if output_bool:
-            st.write("Calculate stock " + symbol)
 
         mom_indicator = get_MomInd().run(price, window=windows, lower=lowers, upper=uppers,\
             param_product=True)
@@ -75,20 +93,5 @@ class MOMStrategy(BaseStrategy):
             idxmax = (pf.sharpe_ratio().idxmax())
             pf = pf[idxmax]
             self.param_dict = dict(zip(['window', 'lower', 'upper'], [int(idxmax[0]), round(idxmax[1], 4), round(idxmax[2], 4)]))
-        return pf
-                
-
-
-    def maxSR(self, output_bool=False):
-        self.param_dict = {
-            "window":   np.arange(5, 30),
-            'upper':    np.arange(0, 0.1, 0.01),
-            'lower':    np.arange(0, 0.1, 0.01)
-        }
-
-        pf = self.run(output_bool)
-        if output_bool:
-            plot_pf(pf)
-       
-        return self.param_dict, pf
-    
+        
+        self.pf =pf

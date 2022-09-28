@@ -1,4 +1,5 @@
 import pandas as pd
+import pandas
 from datetime import datetime, date
 import pytz
 import json
@@ -7,6 +8,8 @@ import os
 
 import config
 import warnings
+
+import streamlit as st
 
 from utils.db import init_connection
 
@@ -137,10 +140,14 @@ class Portfolio(object):
         total_return = round(pf.stats('total_return')[0], 2)
         sharpe_ratio = round(pf.stats('sharpe_ratio')[0], 2)
         maxdrawdown = round(pf.stats('max_dd')[0], 2)
-        annual_return = round(pf.annualized_return(), 2)
+        annual_return = pf.annualized_return()
+        if type(annual_return) == pandas.core.series.Series:
+            annual_return = round(annual_return[0], 2)
+        else:
+            annual_return = round(annual_return, 2)
                 
         try:
-            filename = str(int(datetime.now().timestamp())) + '.pf'
+            filename = str(datetime.now().timestamp()) + '.pf'
             sql_stat = f"UPDATE portfolio SET end_date='{end_date}', total_return={total_return}, annual_return={annual_return}, sharpe_ratio={sharpe_ratio}, maxdrawdown={maxdrawdown}, filename='{filename}'" 
             sql_stat = sql_stat + f" WHERE id={id};"
             cursor.execute(sql_stat)
@@ -148,9 +155,23 @@ class Portfolio(object):
             pf.save(config.PORTFOLIO_PATH + filename)
             os.remove(config.PORTFOLIO_PATH + ofilename)
 
+        except FileNotFoundError as e:
+            print(e)
+
         except Exception  as e:
-            print("...", e)
+            print("Update portfolio error:", e)
             connection.rollback()
             return False
-            
+
+
+        return True
+
+    def updateAll(self)->bool:
+        for i in range(len(self.df)):
+            if not self.update(self.df.loc[i, 'id']):
+                print(f"Fail to update portfolio('{self.df.loc[i, 'name']}')")
+                return False
+            else:
+                st.success(f"Update portfolio('{self.df.loc[i,'name']}') successfully.")
+        
         return True
