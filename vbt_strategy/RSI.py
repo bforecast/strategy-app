@@ -5,7 +5,6 @@ from itertools import product
 import streamlit as st
 import vectorbt as vbt
 
-from utils.vbt_nb import plot_pf
 from .base import BaseStrategy
 
 
@@ -21,17 +20,17 @@ class RSIStrategy(BaseStrategy):
             "step": 1   
             },
             {
-            "name": "upper",
-            "type": "int",
-            "min":  70,
-            "max":  81,
-            "step": 1   
-            },
-            {
             "name": "lower",
             "type": "int",
             "min":  20,
             "max":  31,
+            "step": 1   
+            },
+            {
+            "name": "upper",
+            "type": "int",
+            "min":  70,
+            "max":  81,
             "step": 1   
             },
         ]
@@ -85,10 +84,10 @@ class RSIStrategy(BaseStrategy):
                         )
                     )
                 idxmax = (pf.total_return().idxmax())
-                st.write(idxmax)
+                # st.write(idxmax)
 
             idxmax = (pf.sharpe_ratio().idxmax())
             pf = pf[idxmax]
-            self.param_dict = dict(zip(['window', 'upper', 'lower'], [int(idxmax[2]), int(idxmax[1]), int(idxmax[0])]))        
+            self.param_dict = dict(zip(['window', 'lower', 'upper'], [int(idxmax[2]), int(idxmax[0]), int(idxmax[1])]))        
         self.pf = pf
    

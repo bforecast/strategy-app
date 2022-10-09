@@ -5,7 +5,6 @@ from itertools import combinations, product
 import streamlit as st
 import vectorbt as vbt
 
-from utils.vbt_nb import plot_pf
 from .base import BaseStrategy
 
 
@@ -81,7 +80,7 @@ class MACDStrategy(BaseStrategy):
                     )
                 )
                 idxmax = (pf.total_return().idxmax())
-                st.write(idxmax)
+                # st.write(idxmax)
 
             idxmax = (pf.sharpe_ratio().idxmax())
             pf = pf[idxmax]

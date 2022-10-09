@@ -1,9 +1,10 @@
 import pandas as pd
+import numpy as np
 
 import streamlit as st
 
 from utils.processing import AKData
-from utils.vbt_nb import plot_pf
+from utils.plot import plot_pf
 
 
 
@@ -28,6 +29,13 @@ class BaseStrategy(object):
                     st.warning(f"Warning: stock '{symbol}' is invalid or missing. Ignore it", icon= "⚠️")
                 else:
                     self.ohlcv_list.append((symbol, stock_df))
+
+        # initialize param_dict using default param_def
+        for param in self.param_def:
+            if param["step"] == 0:
+                self.param_dict[param["name"]] = [int((param["min"] + param['max'])/ 2)]
+            else:
+                self.param_dict[param["name"]] = np.arange(param["min"], param["max"], param["step"])
         
     def log(self, txt, dt=None, doprint=False):
         pass
@@ -50,4 +58,4 @@ class BaseStrategy(object):
 
         self.run()
         return self.pf    
-
+        

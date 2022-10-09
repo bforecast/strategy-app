@@ -30,14 +30,14 @@ def input_dates():
     end_date = datetime(year=end_date.year, month=end_date.month, day=end_date.day, tzinfo=pytz.utc)
     return start_date, end_date
 
-def button_SavePortfolio(symbolsDate_dict, strategy:str, strategy_param:dict, pf):
+def button_SavePortfolio(symbolsDate_dict, strategyname:str, strategy_param:dict, pf):
     col1, col2 = st.columns([1,4])
     with col1:
-        button_save = st.button("Save")
+        button_save = st.button("Save", 'button'+strategyname)
     with col2:
         if button_save:
             portfolio = Portfolio()
-            if portfolio.add(symbolsDate_dict, strategy, strategy_param, pf):
+            if portfolio.add(symbolsDate_dict, strategyname, strategy_param, pf):
                 st.success("Save the portfolio sucessfully.")
             else:
                 st.error('Fail to save the portfolio.')
@@ -62,10 +62,11 @@ def check_password():
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        # First run, show input for password.
-        st.text_input(
-            "Password", type="password", on_change=password_entered, key="password"
-        )
+        if "password" not in st.session_state:
+            # First run, show input for password.
+            st.text_input(
+                "Password", type="password", on_change=password_entered, key="password"
+            )
         return False
     elif not st.session_state["password_correct"]:
         # Password not correct, show input + error.
@@ -138,24 +139,31 @@ def input_SymbolsDate() -> dict:
             "end_date": end_date,
         }
 
-def params_selector_ui(params):
+def params_selector(params):
     params_parse = dict()
     st.write("Optimization Parameters:")
     for param in params:
         col1, col2 = st.columns([3, 1])
         with col1:
             gap = (param["max"]-param["min"]) * 0.5
-            if param['type'] == 'int':
-                gap = int(gap)
-                bottom = max(0, param["min"] - gap)
+            if param["step"] == 0:
+                value = st.slider("Select " + param["name"], min_value= param["min"], max_value= param['max'], step= 1)
+                values = [value, value]
             else:
-                bottom = max(0.0, param["min"] - gap)
+                if param['type'] == 'int':
+                    gap = int(gap)
+                    bottom = max(0, param["min"] - gap)
+                else:
+                    bottom = max(0.0, param["min"] - gap)
 
-            values =st.slider("Select a range of " + param["name"],
-                            bottom, param['max'] + gap, (param["min"], param["max"]))
+                values =st.slider("Select a range of " + param["name"],
+                                bottom, param['max'] + gap, (param["min"], param["max"]))
         with col2:
             step_number = st.number_input("step " + param["name"], value=param["step"])
 
-        params_parse[param["name"]] = np.arange(values[0], values[1], step_number)
+        if step_number == 0:
+             params_parse[param["name"]] = [values[0]]
+        else:
+            params_parse[param["name"]] = np.arange(values[0], values[1], step_number)
 
     return params_parse

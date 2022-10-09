@@ -3,7 +3,6 @@ import numpy as np
 import streamlit as st
 import vectorbt as vbt
 
-from utils.vbt_nb import plot_pf
 from .base import BaseStrategy
 
 
@@ -45,7 +44,7 @@ class MAStrategy(BaseStrategy):
 
         if "window" in self.param_dict.keys():
             idxmax = (pf.sharpe_ratio().idxmax())
-            st.write(idxmax)
+            # st.write(idxmax)
             pf = pf[idxmax]
             self.param_dict = dict(zip(['fast_window', 'slow_window'], [int(idxmax[0]), int(idxmax[1])]))
         

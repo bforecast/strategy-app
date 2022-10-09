@@ -45,7 +45,7 @@ class Portfolio(object):
         end_date = symbolsDate_dict['end_date']
 
         name = strategyname + '_' + '&'.join(symbols)
-        filename = str(int(datetime.now().timestamp())) + '.pf'
+        filename = str(datetime.now().timestamp()) + '.pf'
         pf.save(config.PORTFOLIO_PATH + filename)
             
         try:
@@ -58,15 +58,15 @@ class Portfolio(object):
                 param_json = json.dumps(strategy_param)
                 tickers = ','.join(symbols)
 
-                total_return = round(pf.stats('total_return')[0], 2)
+                total_return = round(pf.stats('total_return')[0]/100.0, 2)
                 sharpe_ratio = round(pf.stats('sharpe_ratio')[0], 2)
-                maxdrawdown = round(pf.stats('max_dd')[0], 2)
+                maxdrawdown = round(pf.stats('max_dd')[0]/100.0, 2)
                 annual_return = round(pf.annualized_return(), 2)
-                annual_return = round(pf.annualized_return(), 2)
+                lastday_return = round(pf.returns()[-1], 4)
                 description = strategyname
                     
-                sql_stat = "INSERT INTO portfolio (name, description, create_date, start_date, end_date, total_return, annual_return, sharpe_ratio, maxdrawdown, filename, param_dict, strategy, symbols, market)" + \
-                                f" VALUES('{name}','{description}','{datetime.today()}','{start_date}','{end_date}',{total_return},{annual_return},{sharpe_ratio},{maxdrawdown},'{filename}','{param_json}','{strategyname}','{tickers}','{market}')"
+                sql_stat = "INSERT INTO portfolio (name, description, create_date, start_date, end_date, total_return, annual_return, lastday_return, sharpe_ratio, maxdrawdown, filename, param_dict, strategy, symbols, market)" + \
+                                f" VALUES('{name}','{description}','{datetime.today()}','{start_date}','{end_date}',{total_return},{annual_return},{lastday_return},{sharpe_ratio},{maxdrawdown},'{filename}','{param_json}','{strategyname}','{tickers}','{market}')"
                 cursor.execute(sql_stat)
                 connection.commit()
             else:
@@ -137,9 +137,11 @@ class Portfolio(object):
         strategy_cli = getattr(__import__(f"vbt_strategy"), f"{strategyname}Strategy")
         strategy = strategy_cli(symbolsDate_dict)
         pf = strategy.update(param_dict)
-        total_return = round(pf.stats('total_return')[0], 2)
+        total_return = round(pf.stats('total_return')[0]/100.0, 2)
+        lastday_return = round(pf.returns()[-1], 4)
+
         sharpe_ratio = round(pf.stats('sharpe_ratio')[0], 2)
-        maxdrawdown = round(pf.stats('max_dd')[0], 2)
+        maxdrawdown = round(pf.stats('max_dd')[0]/100.0, 2)
         annual_return = pf.annualized_return()
         if type(annual_return) == pandas.core.series.Series:
             annual_return = round(annual_return[0], 2)
@@ -148,7 +150,7 @@ class Portfolio(object):
                 
         try:
             filename = str(datetime.now().timestamp()) + '.pf'
-            sql_stat = f"UPDATE portfolio SET end_date='{end_date}', total_return={total_return}, annual_return={annual_return}, sharpe_ratio={sharpe_ratio}, maxdrawdown={maxdrawdown}, filename='{filename}'" 
+            sql_stat = f"UPDATE portfolio SET end_date='{end_date}', total_return={total_return}, lastday_return={lastday_return}, annual_return={annual_return}, sharpe_ratio={sharpe_ratio}, maxdrawdown={maxdrawdown}, filename='{filename}'" 
             sql_stat = sql_stat + f" WHERE id={id};"
             cursor.execute(sql_stat)
             connection.commit()

@@ -45,34 +45,6 @@ CREATE TABLE stock_price (
 
 CREATE INDEX ON stock_price (stock_id, dt DESC);
 
-SELECT create_hypertable('stock_price', 'dt');
-
-
-CREATE MATERIALIZED VIEW daily_bars
-WITH (timescaledb.continuous) AS
-SELECT stock_id,
-       time_bucket(INTERVAL '1 day', dt) AS day,
-       first(open, dt) as open,
-       max(high) as high,
-       min(low) as low,
-       last(close, dt) as close,
-       sum(volume) as volume
-FROM stock_price
-GROUP BY stock_id, day;
-
-
-CREATE MATERIALIZED VIEW hourly_bars
-WITH (timescaledb.continuous) AS
-SELECT stock_id,
-       time_bucket(INTERVAL '1 hour', dt) AS hour,
-       first(open, dt) as open,
-       max(high) as high,
-       min(low) as low,
-       last(close, dt) as close,
-       sum(volume) as volume
-FROM stock_price
-GROUP BY stock_id, hour;
-
 CREATE TABLE portfolio (
     id SERIAL PRIMARY KEY,
     create_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
@@ -81,7 +53,7 @@ CREATE TABLE portfolio (
     start_date TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
     end_date TIMESTAMP WITHOUT TIME ZONE NOT NULL, 
     total_return NUMERIC NOT NULL, 
-    today_return NUMERIC,
+    lastday_return NUMERIC,
     annual_return NUMERIC NOT NULL, 
     sharpe_ratio NUMERIC NOT NULL, 
     maxdrawdown  NUMERIC NOT NULL,
@@ -92,10 +64,7 @@ CREATE TABLE portfolio (
     market TEXT NOT NULL
 );
 
-CREATE TABLE portfolio_stock (
-    portfolio_id INTEGER NOT NULL, 
-    stock_id INTEGER NOT NULL,
-    PRIMARY KEY (portfolio_id, stock_id),
-    CONSTRAINT fk_portfolio FOREIGN KEY (portfolio_id) REFERENCES portfolio (id),
+CREATE TABLE stock_pool (
+    stock_id INTEGER PRIMARY KEY,
     CONSTRAINT fk_stock FOREIGN KEY (stock_id) REFERENCES stock (id)
 );

@@ -1,11 +1,12 @@
 import numpy as np
+import pandas as pd
+from itertools import product
 
+from .base import BaseStrategy
 from numba import njit
 import streamlit as st
 import vectorbt as vbt
 
-from utils.plot import plot_pf
-from .base import BaseStrategy
 
 
 @njit
@@ -32,9 +33,9 @@ def get_MomInd():
     
     return MomInd
 
-class MOMStrategy(BaseStrategy):
-    '''Mom strategy'''
-    _name = "MOM"
+class MOM_RSIStrategy(BaseStrategy):
+    '''Mom_RSI strategy'''
+    _name = "MOM_RSI"
     param_dict = {}
     param_def = [
             {
@@ -69,8 +70,34 @@ class MOMStrategy(BaseStrategy):
 
         mom_indicator = get_MomInd().run(price, window=windows, lower=lowers, upper=uppers,\
             param_product=True)
-        entries = mom_indicator.entry_signal
-        exits = mom_indicator.exit_signal
+        mom_entries = mom_indicator.entry_signal
+        mom_exits = mom_indicator.exit_signal
+        rsi = vbt.RSI.run(
+                price, 
+                window=10,
+                short_name='rsi',
+                param_product=True)
+
+
+        rsi_entries = rsi.rsi_crossed_below(20)
+        rsi_exits = rsi.rsi_crossed_above(80)
+
+        if len(windows) > 1:
+            rsi_entries_df = mom_entries.copy()
+            rsi_exits_df = mom_exits.copy()
+            for col in mom_entries.columns:
+                rsi_entries_df[col] = rsi_entries
+                rsi_exits_df[col] = rsi_exits
+
+            entries = mom_entries | rsi_entries_df
+            exits = mom_exits | rsi_exits_df
+        else:
+            entries = mom_entries | rsi_entries
+            exits = mom_exits | rsi_exits
+        # st.text(mom_entries)
+        # st.text(rsi_entries_df)
+        # st.text(entries)
+        
         pf = vbt.Portfolio.from_signals(price, entries, exits, fees=0.002, freq='1D')
         
         if output_bool:
@@ -92,6 +119,6 @@ class MOMStrategy(BaseStrategy):
         if len(windows) > 1:
             idxmax = (pf.sharpe_ratio().idxmax())
             pf = pf[idxmax]
-            self.param_dict = dict(zip(['window', 'lower', 'upper'], [int(idxmax[0]), round(idxmax[1], 4), round(idxmax[2], 4)]))
+            self.param_dict = dict(zip(['window', 'lower', 'upper'], [int(idxmax[0]), round(idxmax[2], 4), round(idxmax[1], 4)]))
         
         self.pf =pf

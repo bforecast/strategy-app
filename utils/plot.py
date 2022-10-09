@@ -1,17 +1,10 @@
 import numpy as np
-import pandas as pd
 from datetime import datetime
 
-from numba import njit
 import streamlit as st
 import vectorbt as vbt
-from vectorbt.generic.nb import nanmean_nb
-from vectorbt.portfolio.nb import order_nb, sort_call_seq_nb
-from vectorbt.portfolio.enums import SizeType, Direction
 
-
-from utils.processing import get_us_stock, get_us_symbol
-from vectorbt.utils.colors import adjust_opacity
+from vectorbt.portfolio.base import Portfolio
 
 import config 
 
@@ -41,25 +34,20 @@ def plot_allocation(rb_pf, symbols):
         )
     return fig
 
-def show_pf(filename:str):
-    vbt_pf = vbt.Portfolio.load(config.PORTFOLIO_PATH + filename)
-    plot_pf(vbt_pf)
+def show_pffromfile(filename:str):
+    pf = vbt.Portfolio.load(config.PORTFOLIO_PATH + filename)
+    plot_pf(pf)
 
-def plot_pf(vbt_pf):
+def plot_pf(pf):
     vbt.settings.array_wrapper['freq'] = 'days'
     vbt.settings.returns['year_freq'] = '252 days'
     vbt.settings.portfolio.stats['incl_unrealized'] = True
-    st.plotly_chart(
-        vbt_pf.plot(
-            subplots=['cum_returns', 'orders','trade_pnl', 'drawdowns', 'underwater'],
-            subplot_settings=dict(
-            underwater=dict(
-                    trace_kwargs=dict(
-                        line=dict(color='#FF6F00'),
-                        fillcolor=adjust_opacity('#FF6F00', 0.3)
-                    )
-                )
+    subplots = st.multiselect("Select subplots:", Portfolio.subplots.keys(),
+                    ['cum_returns','orders', 'trade_pnl', 'drawdowns'], key=pf.total_return())
+    if len(subplots) > 0:
+        st.plotly_chart(
+            pf.plot(
+                subplots=subplots,
             )
-        )   
-    )
-    st.text(vbt_pf.returns_stats()) 
+        )
+    st.text(pf.returns_stats()) 
