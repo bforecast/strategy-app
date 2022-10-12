@@ -37,7 +37,7 @@ class MACDStrategy(BaseStrategy):
 
 
     def run(self, output_bool=False):
-        price = self.ohlcv_list[0][1].close
+        price = self.stock_dfs[0][1].close
         
         fast_windows = self.param_dict['fast_window']
         slow_windows = self.param_dict['slow_window']
@@ -79,11 +79,12 @@ class MACDStrategy(BaseStrategy):
                         )
                     )
                 )
-                idxmax = (pf.total_return().idxmax())
-                # st.write(idxmax)
 
-            idxmax = (pf.sharpe_ratio().idxmax())
+            SRs = pf.sharpe_ratio()
+            idxmax = SRs[SRs != np.inf].idxmax()
             pf = pf[idxmax]
             self.param_dict = dict(zip(['fast_window', 'slow_window', 'signal_window'], [int(idxmax[0]), int(idxmax[1]), int(idxmax[2])]))        
         self.pf = pf
+        return True
+
    

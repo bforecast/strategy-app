@@ -5,7 +5,6 @@ import vectorbt as vbt
 
 from .base import BaseStrategy
 
-
 class MAStrategy(BaseStrategy):
     '''MA strategy'''
     _name = "MA"
@@ -19,8 +18,8 @@ class MAStrategy(BaseStrategy):
             },
         ]
 
-    def run(self, output_bool=False):
-        price = self.ohlcv_list[0][1].close
+    def run(self, output_bool=False)->bool:
+        price = self.stock_dfs[0][1].close
         if "window" in self.param_dict.keys():
             window = self.param_dict['window']
             fast_ma, slow_ma = vbt.MA.run_combs(price, window=window, r=2, short_names=['fast', 'slow'])
@@ -43,9 +42,11 @@ class MAStrategy(BaseStrategy):
             st.plotly_chart(fig)
 
         if "window" in self.param_dict.keys():
-            idxmax = (pf.sharpe_ratio().idxmax())
+            SRs = pf.sharpe_ratio()
+            idxmax = SRs[SRs != np.inf].idxmax()
             # st.write(idxmax)
             pf = pf[idxmax]
             self.param_dict = dict(zip(['fast_window', 'slow_window'], [int(idxmax[0]), int(idxmax[1])]))
         
         self.pf = pf
+        return True

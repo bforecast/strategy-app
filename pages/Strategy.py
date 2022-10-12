@@ -20,7 +20,7 @@ if check_password():
             st.subheader("Stocks:    " + ' , '.join(symbolsDate_dict['symbols']))
             strategy_cls = getattr(__import__(f"vbt_strategy"), strategyname + 'Strategy')
             strategy = strategy_cls(symbolsDate_dict)
-            if len(strategy.ohlcv_list) > 0:
+            if len(strategy.stock_df) > 0:
                 params = params_selector(strategy.param_def)
                 if check_params(params):
                     if strategy.maxSR(params, output_bool=True):

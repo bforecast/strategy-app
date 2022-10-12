@@ -65,8 +65,8 @@ class MOM_RSIStrategy(BaseStrategy):
         windows = self.param_dict['window']
         uppers = self.param_dict['upper']
         lowers = self.param_dict['lower']
-        price = self.ohlcv_list[0][1].close
-        symbol = self.ohlcv_list[0][0]
+        price = self.stock_dfs[0][1].close
+        symbol = self.stock_dfs[0][0]
 
         mom_indicator = get_MomInd().run(price, window=windows, lower=lowers, upper=uppers,\
             param_product=True)
@@ -117,8 +117,11 @@ class MOM_RSIStrategy(BaseStrategy):
             st.plotly_chart(fig)
 
         if len(windows) > 1:
-            idxmax = (pf.sharpe_ratio().idxmax())
+            SRs = pf.sharpe_ratio()
+            idxmax = SRs[SRs != np.inf].idxmax()
             pf = pf[idxmax]
             self.param_dict = dict(zip(['window', 'lower', 'upper'], [int(idxmax[0]), round(idxmax[2], 4), round(idxmax[1], 4)]))
         
         self.pf =pf
+        return True
+

@@ -1,4 +1,4 @@
-from datetime  import datetime, date
+from datetime  import datetime, date, timedelta
 import pytz
 import numpy as np
 
@@ -31,6 +31,23 @@ def input_dates():
     return start_date, end_date
 
 def button_SavePortfolio(symbolsDate_dict, strategyname:str, strategy_param:dict, pf):
+     # Define callbacks to handle button clicks.
+    col1, col2 = st.columns([1,4])
+    def handle_click(symbolsDate_dict, strategyname:str, strategy_param:dict, pf):
+        portfolio = Portfolio()
+        if portfolio.add(symbolsDate_dict, strategyname, strategy_param, pf):
+            col2.success("Save the portfolio sucessfully.")
+        else:
+            col2.error('Fail to save the portfolio.')
+
+    with col1:
+        st.button("Save",
+                key= 'button_'+strategyname,
+                on_click = handle_click,
+                args = (symbolsDate_dict, strategyname, strategy_param, pf),
+                )
+
+def button_SavePortfolio0(symbolsDate_dict, strategyname:str, strategy_param:dict, pf):
     col1, col2 = st.columns([1,4])
     with col1:
         button_save = st.button("Save", 'button'+strategyname)
@@ -110,25 +127,25 @@ def show_bar():
 
 
 def input_SymbolsDate() -> dict:
-    """akshare params
-    :return: dict
-    """
+    # if "textinput_symbols" in st.session_state:
+    #     st.session_state.textinput_symbols = ''
+
     market = st.sidebar.radio("Which Market?", ['US', 'CN', 'HK'])
     if market == 'US':
         symbols_string = st.sidebar.text_input("Enter all stock tickers to be included in portfolio separated by commas \
-                                WITHOUT spaces, e.g. 'AMZN,NFLX,GOOG,AAPL'", '').upper()
+                                WITHOUT spaces, e.g. 'AMZN,NFLX,GOOG,AAPL'", '', key="textinput" + "_symbols").upper()
     elif market == 'CN':
         symbols_string = st.sidebar.text_input("Enter all stock tickers to be included in portfolio separated by commas \
-                                WITHOUT spaces, e.g. '601318,000001'", '')
+                                WITHOUT spaces, e.g. '601318,000001'", '', key="textinput" + "_symbols")
     else:
         symbols_string = st.sidebar.text_input("Enter all stock tickers to be included in portfolio separated by commas \
-                                WITHOUT spaces, e.g. '00700,01171'", '')
+                                WITHOUT spaces, e.g. '00700,01171'", '', key="textinput" + "_symbols")
     symbols = []
     if len(symbols_string) > 0:
         symbols = symbols_string.strip().split(',')
 
     start_date = st.sidebar.date_input("Start date?", date(2018, 1, 1))
-    end_date = st.sidebar.date_input("End date?", date.today())
+    end_date = st.sidebar.date_input("End date?", date.today()- timedelta(days = 1))
     start_date = datetime(year=start_date.year, month=start_date.month, day=start_date.day, tzinfo=pytz.utc)
     end_date = datetime(year=end_date.year, month=end_date.month, day=end_date.day, tzinfo=pytz.utc)
     

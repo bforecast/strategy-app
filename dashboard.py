@@ -70,24 +70,22 @@ def show_PortfolioTable(portfolio_df):
 
 def show_PortforlioDetail(portfolio_df, index):
     if index > -1 and (index in portfolio_df.index):
-            st.info('Selected portfolio:    ' + portfolio_df.at[index, 'name'])
-            param_dict = portfolio_df.at[index, 'param_dict']
+        st.info('Selected portfolio:    ' + portfolio_df.at[index, 'name'])
+        param_dict = portfolio_df.at[index, 'param_dict']
 
-            cols = st.columns(4 + len(param_dict))
-            with cols[0]:
-                st.metric('Annualized', "{0:.0%}".format(portfolio_df.at[index, 'annual_return']))
-            with cols[1]:
-                st.metric('Lastday Return', "{0:.1%}".format(portfolio_df.at[index, 'lastday_return']))
-            with cols[2]:
-                st.metric('Sharpe Ratio', '%.2f'% portfolio_df.at[index, 'sharpe_ratio'])
-            with cols[3]:
-                st.metric('Max DD', '{0:.0%}'.format(portfolio_df.at[index, 'maxdrawdown']))
-            i = 4
-            for k, v in param_dict.items():
-                with cols[i]:
-                    st.metric(k, v)
-                i = i + 1
-            return True
+        cols = st.columns([1, 1, 1, 1, 3])
+        with cols[0]:
+            st.metric('Annualized', "{0:.0%}".format(portfolio_df.at[index, 'annual_return']))
+        with cols[1]:
+            st.metric('Lastday Return', "{0:.1%}".format(portfolio_df.at[index, 'lastday_return']))
+        with cols[2]:
+            st.metric('Sharpe Ratio', '%.2f'% portfolio_df.at[index, 'sharpe_ratio'])
+        with cols[3]:
+            st.metric('Max DD', '{0:.0%}'.format(portfolio_df.at[index, 'maxdrawdown']))
+        with cols[4]:
+            st.markdown("**Parameters**")
+            st.text(param_dict)
+        return True
     else:
         return False
 

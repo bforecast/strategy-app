@@ -49,15 +49,10 @@ class CSPRStrategy0(BaseStrategy):
 
 
     def run(self, output_bool=False):
-        ohlcv = self.ohlcv_list[0][1]
-        
+        ohlcv = self.stock_df[0][1]
         uppers = self.param_dict['upper']
         lowers = self.param_dict['lower']
-
-        # PR_list = ['CDL3LINESTRIKE', 'CDL3BLACKCROWS', 'CDLEVENINGSTAR', 'CDLENGULFING', 'CDLDRAGONFLYDOJI',
-        #             'CDLGRAVESTONEDOJI', 'CDLTASUKIGAP', 'CDLHAMMER','CDLDARKCLOUDCOVER', 'CDLPIERCING']
-        # uppers = [200]
-        # lowers = [-100]
+        
         prScore = 0
         for pattern in talib.get_function_groups()['Pattern Recognition']:
             PRecognizer = vbt.IndicatorFactory.from_talib(pattern)
@@ -97,7 +92,7 @@ class CSPRStrategy(BaseStrategy):
     _name = "CSPR"
     param_def = [
             {
-            "name": "number",
+            "name": "pattern",
             "type": "int",
             "min":  1,
             "max":  3,
@@ -106,8 +101,8 @@ class CSPRStrategy(BaseStrategy):
         ]
 
     def run(self, output_bool=False):
-        ohlcv = self.ohlcv_list[0][1]
-        numbers = self.param_dict['number']
+        ohlcv = self.stock_dfs[0][1]
+        patterns = self.param_dict['pattern']
         PR_list = talib.get_function_groups()['Pattern Recognition']
 
         prScore_df = pd.DataFrame()
@@ -123,11 +118,10 @@ class CSPRStrategy(BaseStrategy):
                 prScore_df[str(idx)] = prScore
                 idx_list.append(idx)
 
-        if type(numbers[0]) == str:
-            str_list = numbers[0][1:-1].split(',')
-            prCombs = [tuple(map(int, str_list))]
+        if type(patterns[0]) == str:
+            prCombs = [tuple(PR_list.index(s) for s in patterns[0].split(','))]
         else:
-            number = numbers[0]
+            number = patterns[0]
             prCombs = list(combinations((idx_list), number))
 
         entries = pd.DataFrame()
@@ -142,17 +136,9 @@ class CSPRStrategy(BaseStrategy):
                 fees=0.001, slippage=0.001,freq='1D')
 
         if len(pf.total_return()) > 0:
-            # if output_bool:
-            #     # Draw all window combinations as a heatmap
-            #     st.plotly_chart(
-            #         pf.total_return().vbt.heatmap(
-            #             x_level='ul_lower', 
-            #             y_level='ul_upper',
-            #         )
-            #     )
-            #     idxmax = (pf.total_return().idxmax())
             SRs = pf.sharpe_ratio()
             idxmax = SRs[SRs != np.inf].idxmax()
             pf = pf[idxmax]
-            self.param_dict = {'number': str(idxmax)}
+            self.param_dict = {'pattern': ','.join(PR_list[i] for i in idxmax)}
         self.pf = pf
+        return True

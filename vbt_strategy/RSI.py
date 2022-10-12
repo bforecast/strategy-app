@@ -37,8 +37,8 @@ class RSIStrategy(BaseStrategy):
 
 
     def run(self, output_bool=False):
-        close_price = self.ohlcv_list[0][1].close
-        open_price = self.ohlcv_list[0][1].open
+        close_price = self.stock_dfs[0][1].close
+        open_price = self.stock_dfs[0][1].open
         
         windows = self.param_dict['window']
         upper_ths = self.param_dict['upper']
@@ -86,8 +86,10 @@ class RSIStrategy(BaseStrategy):
                 idxmax = (pf.total_return().idxmax())
                 # st.write(idxmax)
 
-            idxmax = (pf.sharpe_ratio().idxmax())
+            SRs = pf.sharpe_ratio()
+            idxmax = SRs[SRs != np.inf].idxmax()
             pf = pf[idxmax]
             self.param_dict = dict(zip(['window', 'lower', 'upper'], [int(idxmax[2]), int(idxmax[0]), int(idxmax[1])]))        
         self.pf = pf
+        return True
    

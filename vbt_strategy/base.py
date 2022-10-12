@@ -6,29 +6,27 @@ import streamlit as st
 from utils.processing import AKData
 from utils.plot import plot_pf
 
-
-
 class BaseStrategy(object):
     '''base strategy'''
     _name = "base"
-    param_dict ={}
-    param_def ={}
+    param_dict = {}
+    param_def = {}
+    stock_dfs = []
 
     def __init__(self, symbolsDate_dict:dict):
         market = symbolsDate_dict['market']
         symbols = symbolsDate_dict['symbols']
-        start_date = symbolsDate_dict['start_date']
-        end_date = symbolsDate_dict['end_date']
-        Data = AKData(market)
-        self.price_df = pd.DataFrame()
-        self.ohlcv_list = []
+        self.start_date = symbolsDate_dict['start_date']
+        self.end_date = symbolsDate_dict['end_date']
+        self.datas = AKData(market)
+        self.stock_dfs = []
         for symbol in symbols:
             if symbol!='':
-                stock_df = Data.download(symbol, start_date, end_date)
+                stock_df = self.datas.get_stock(symbol, self.start_date, self.end_date)
                 if stock_df.empty:
                     st.warning(f"Warning: stock '{symbol}' is invalid or missing. Ignore it", icon= "⚠️")
                 else:
-                    self.ohlcv_list.append((symbol, stock_df))
+                    self.stock_dfs.append((symbol, stock_df))
 
         # initialize param_dict using default param_def
         for param in self.param_def:
@@ -42,11 +40,12 @@ class BaseStrategy(object):
 
     def maxSR(self, param, output_bool=False):
         self.param_dict = param
-        self.run(output_bool)
-        if output_bool:
-            plot_pf(self.pf)
-       
-        return True
+        if self.run(output_bool):
+            if output_bool:
+                plot_pf(self.pf)
+            return True
+        else:
+            return False
 
     def update(self, param_dict:dict):
         """

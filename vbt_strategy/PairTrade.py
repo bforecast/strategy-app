@@ -217,10 +217,10 @@ class PairTradeStrategy(BaseStrategy):
         uppers = self.param_dict['upper']
         lowers = self.param_dict['lower']
 
-        ohlcv1 = self.ohlcv_list[0][1]
-        ohlcv2 = self.ohlcv_list[1][1]
-        symbol1 = self.ohlcv_list[0][0]
-        symbol2 = self.ohlcv_list[1][0]
+        ohlcv1 = self.stock_dfs[0][1]
+        ohlcv2 = self.stock_dfs[1][1]
+        symbol1 = self.stock_dfs[0][0]
+        symbol2 = self.stock_dfs[1][0]
         
         symbol_cols = pd.Index([symbol1, symbol2], name='symbol')
         vbt_close_price = pd.concat((ohlcv1['close'], ohlcv2['close']), axis=1, keys=symbol_cols)
@@ -277,16 +277,18 @@ class PairTradeStrategy(BaseStrategy):
                     )
                 )
         if len(windows) > 1:
-            # Max Sharpe_ratio Parameter    
-            idxmax = (vbt_pf_mult.sharpe_ratio().idxmax())
+            # Max Sharpe_ratio Parameter
+            SRs = vbt_pf_mult.sharpe_ratio()
+            idxmax = SRs[SRs != np.inf].idxmax()    
             pf = vbt_pf_mult[idxmax]
             self.param_dict = dict(zip(['window', 'upper', 'lower'], [int(idxmax[0]), round(idxmax[1], 4), round(idxmax[2], 4)]))
         else:
             pf =vbt_pf_mult
         self.pf =pf
+        return True
 
     def maxSR(self, param, output_bool=False):
-        if len(self.ohlcv_list) > 1:
+        if len(self.stock_dfs) > 1:
             super(PairTradeStrategy, self).maxSR(param, output_bool)
         else:
             return False
@@ -369,3 +371,4 @@ def pairtrade_pfs(symbol1, symbol2, price1, price2, output_bool=False):
         pf = None
     # param_dict = dict(zip(['window', 'upper', 'lower'], [int(idxmax[0]), round(idxmax[1], 4), round(idxmax[2], 4)]))
     return pf
+    

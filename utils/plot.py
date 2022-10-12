@@ -43,7 +43,7 @@ def plot_pf(pf):
     vbt.settings.returns['year_freq'] = '252 days'
     vbt.settings.portfolio.stats['incl_unrealized'] = True
     subplots = st.multiselect("Select subplots:", Portfolio.subplots.keys(),
-                    ['cum_returns','orders', 'trade_pnl', 'drawdowns'], key=pf.total_return())
+                    ['cum_returns','orders', 'trade_pnl', 'drawdowns'], key='multiselect_'+str(pf.total_return()))
     if len(subplots) > 0:
         st.plotly_chart(
             pf.plot(

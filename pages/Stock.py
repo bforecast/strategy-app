@@ -38,7 +38,7 @@ if check_password():
         for strategyname in strategy_list:
             strategy_cls = getattr(__import__(f"vbt_strategy"), strategyname + 'Strategy')
             strategy = strategy_cls(symbolsDate_dict)
-            if len(strategy.ohlcv_list) > 0:
+            if len(strategy.stock_dfs) > 0:
                 if strategy.maxSR(strategy.param_dict, output_bool=False):
                     col1, col2 = st.columns(2)
                     with col1:
@@ -49,7 +49,7 @@ if check_password():
                     show_PortforlioDetail(strategy)
                     if showpf_bool:
                         plot_pf(strategy.pf)
-                    savepf_bool = button_SavePortfolio(symbolsDate_dict, strategyname, strategy.param_dict, strategy.pf)
+                    button_SavePortfolio(symbolsDate_dict, strategyname, strategy.param_dict, strategy.pf)
             else:
                 st.error("None of stocks is valid.")
 

@@ -76,10 +76,12 @@ class SuperTrendStrategy(BaseStrategy):
     def run(self, output_bool=False):
         windows = self.param_dict['window']
         multipliers = self.param_dict['multiplier']
-        high = self.ohlcv_list[0][1].high
-        low = self.ohlcv_list[0][1].low
-        close = self.ohlcv_list[0][1].close
-        symbol = self.ohlcv_list[0][0]
+        high = self.stock_dfs[0][1].high
+        low = self.stock_dfs[0][1].low
+        close = self.stock_dfs[0][1].close
+        open = self.stock_dfs[0][1].open
+
+        symbol = self.stock_dfs[0][0]
 
         SuperTrend = vbt.IndicatorFactory(
             class_name='SuperTrend',
@@ -100,6 +102,7 @@ class SuperTrendStrategy(BaseStrategy):
         exits = (~st_indicator.supers.isnull()).vbt.signals.fshift()
         pf = vbt.Portfolio.from_signals(
                     close=close, 
+                    open=open, 
                     entries=entries, 
                     exits=exits, 
                     fees=0.001, 
@@ -115,8 +118,10 @@ class SuperTrendStrategy(BaseStrategy):
             st.plotly_chart(fig)
 
         if len(windows) > 1:
-            idxmax = (pf.sharpe_ratio().idxmax())
+            SRs = pf.sharpe_ratio()
+            idxmax = SRs[SRs != np.inf].idxmax()
             pf = pf[idxmax]
             self.param_dict = dict(zip(['window', 'multiplier'], [int(idxmax[0]), round(idxmax[1], 1)]))
         
         self.pf =pf
+        return True
