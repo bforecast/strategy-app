@@ -8,52 +8,25 @@ import vectorbt as vbt
 
 from .base import BaseStrategy
 
-def threeRSIDef(close, window1=14, window2=50, window3=100, case=0):
+def threeRSIDef(close, window1=14, window2=50, window3=100):
     rsi1 = talib.RSI(close, window1)
     rsi2 = talib.RSI(close, window2)
     rsi3 = talib.RSI(close, window3)
-
-    #there must be a better way of doing this
-    if case == 0:
-        
-        entries = np.where((rsi1 > rsi2) & (rsi2 > rsi3), True, False)
-        exits = np.where((rsi1 < rsi2) & (rsi2 < rsi3), True, False)
-
-        
-    elif case == 1:
-        
-        trend = np.where((rsi1 > rsi2) & (rsi1 > rsi3) & (rsi2 < rsi3), 1, -1)
-        
-    elif case == 2:
-        
-        trend = np.where((rsi1 < rsi2) & (rsi1 > rsi3) & (rsi2 > rsi3), 1, -1)
-        
-    elif case == 3:
-        
-        trend = np.where((rsi1 > rsi2) & (rsi1 < rsi3) & (rsi2 < rsi3), 1, -1)
-        
-    elif case == 4:
-        
-        trend = np.where((rsi1 < rsi2) & (rsi1 < rsi3) & (rsi2 > rsi3), 1, -1)
-        
-    elif case == 5:
-        
-        trend = np.where((rsi1 < rsi2) & (rsi1 < rsi3) & (rsi2 < rsi3), 1, -1)
-
+    entries = np.where((rsi1 > rsi2) & (rsi2 > rsi3), True, False)
+    exits = np.where((rsi1 < rsi2) & (rsi2 < rsi3), True, False)
     return entries, exits
 
 threeRSI = vbt.IndicatorFactory(
     class_name = "threeRSI",
     short_name = "RSI3",
     input_names = ["close"],
-    param_names = ["window1", "window2", "window3", "case"],
+    param_names = ["window1", "window2", "window3"],
     output_names = ["entries", "exits"]
     ).from_apply_func(
         threeRSIDef,
         window1 = 14,
         window2 = 30,
         window3 = 70,
-        case = 0,
         to_2d = False
         )
 
@@ -96,20 +69,22 @@ class RSI3Strategy(BaseStrategy):
 
         ind = threeRSI.run(close_price, window1=windows1, window2=windows2, window3=windows3,\
             param_product=True)
+        #Don't look into the future
+        entries = ind.entries.vbt.signals.fshift()
+        exits = ind.exits.vbt.signals.fshift()
 
-        pf_kwargs = dict(fees=0.001, freq='1D')
         pf = vbt.Portfolio.from_signals(
             close=close_price, 
             open=open_price, 
-            entries=ind.entries, 
-            exits=ind.exits,
+            entries=entries, 
+            exits=exits,
             size=100,
             size_type='value',
             init_cash='auto',
-            **pf_kwargs
+            **self.pf_kwargs
             )
 
-        if len(pf.total_return()) > 0:
+        if len(windows1) > 1:
             if output_bool:
                 # Draw all window combinations as a 3D volume
                 st.plotly_chart(

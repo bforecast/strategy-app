@@ -54,6 +54,9 @@ class RSIStrategy(BaseStrategy):
 
         entries = rsi.rsi_crossed_below(lower_ths_prod, level_name='lower')
         exits = rsi.rsi_crossed_above(upper_ths_prod, level_name='upper')
+        #Don't look into the future
+        entries = entries.vbt.signals.fshift()
+        exits = exits.vbt.signals.fshift()        
 
         pf_kwargs = dict(fees=0.001, freq='1D')
         pf = vbt.Portfolio.from_signals(

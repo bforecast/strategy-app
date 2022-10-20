@@ -31,9 +31,11 @@ class MAStrategy(BaseStrategy):
 
         entries = fast_ma.ma_crossed_above(slow_ma)
         exits = fast_ma.ma_crossed_below(slow_ma)
+        #Don't look into the future
+        entries = entries.vbt.signals.fshift()
+        exits = exits.vbt.signals.fshift()
 
-        pf_kwargs = dict(size=np.inf, fees=0.001, freq='1D')
-        pf = vbt.Portfolio.from_signals(price, entries, exits, **pf_kwargs)
+        pf = vbt.Portfolio.from_signals(price, entries, exits, **self.pf_kwargs)
 
         if output_bool:
             fig = pf.total_return().vbt.heatmap(

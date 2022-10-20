@@ -12,6 +12,8 @@ class BaseStrategy(object):
     param_dict = {}
     param_def = {}
     stock_dfs = []
+    pf_kwargs = dict(fees=0.001, slippage=0.001, freq='1D')
+
 
     def __init__(self, symbolsDate_dict:dict):
         market = symbolsDate_dict['market']

@@ -105,8 +105,7 @@ class SuperTrendStrategy(BaseStrategy):
                     open=open, 
                     entries=entries, 
                     exits=exits, 
-                    fees=0.001, 
-                    freq='1d'
+                    **self.pf_kwargs
                 )
         
         if output_bool:

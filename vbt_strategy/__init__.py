@@ -8,6 +8,8 @@ from .SuperTrend import SuperTrendStrategy
 from .CSPR import CSPRStrategy
 from .RSI3 import RSI3Strategy
 from .PETOR import PETORStrategy
+from .PEGTOR import PEGTORStrategy
 
-__all__ = ["MOMStrategy", "PairTradeStrategy", "MAStrategy", "RSIStrategy", "MACDStrategy", "MOM_RSIStrategy", "SuperTrendStrategy", "CSPRStrategy", "RSI3Strategy", "PETORStrategy"]
-strategy_list = ["MA", "MACD", "MOM", "PairTrade", "RSI", "MOM_RSI", "SuperTrend", "CSPR", "RSI3", "PETOR"]
+
+__all__ = ["MOMStrategy", "PairTradeStrategy", "MAStrategy", "RSIStrategy", "MACDStrategy", "MOM_RSIStrategy", "SuperTrendStrategy", "CSPRStrategy", "RSI3Strategy", "PETORStrategy", "PEGTORStrategy"]
+strategy_list = ["MA", "MACD", "MOM", "PairTrade", "RSI", "MOM_RSI", "SuperTrend", "CSPR", "RSI3", "PETOR", "PEGTOR"]

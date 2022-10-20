@@ -47,8 +47,12 @@ class Portfolio(object):
         name = strategyname + '_' + '&'.join(symbols)
         filename = str(datetime.now().timestamp()) + '.pf'
         pf.save(config.PORTFOLIO_PATH + filename)
-            
-        try:
+        with open(config.PORTFOLIO_PATH + filename, 'rb') as pf_file:
+          pf_blob = pf_file.read()
+          pf_file.close()
+          os.remove(config.PORTFOLIO_PATH + filename)    
+          
+          try:
             tickers = "','".join(symbols)
             tickers = "'" + tickers + "'"
             sql_stat = f"SELECT * FROM stock WHERE symbol in ({tickers})"
@@ -64,16 +68,16 @@ class Portfolio(object):
                 annual_return = round(pf.annualized_return(), 2)
                 lastday_return = round(pf.returns()[-1], 4)
                 description = strategyname
-                    
-                sql_stat = "INSERT INTO portfolio (name, description, create_date, start_date, end_date, total_return, annual_return, lastday_return, sharpe_ratio, maxdrawdown, filename, param_dict, strategy, symbols, market)" + \
-                                f" VALUES('{name}','{description}','{datetime.today()}','{start_date}','{end_date}',{total_return},{annual_return},{lastday_return},{sharpe_ratio},{maxdrawdown},'{filename}','{param_json}','{strategyname}','{tickers}','{market}')"
-                cursor.execute(sql_stat)
+
+                cursor.execute("INSERT INTO portfolio (id, name, description, create_date, start_date, end_date, total_return, annual_return, lastday_return, sharpe_ratio, maxdrawdown, param_dict, strategy, symbols, market, vbtpf) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                            (None, name, description, datetime.today(), start_date, end_date, total_return, annual_return, lastday_return, sharpe_ratio, maxdrawdown, param_json, strategyname, tickers, market, pf_blob))
                 connection.commit()
+
             else:
                 print("some of stocks are invalid.")
                 return False
 
-        except Exception  as e:
+          except Exception  as e:
             print("...", e)
             connection.rollback()
             return False
@@ -95,8 +99,7 @@ class Portfolio(object):
             sql_stat = f"DELETE FROM portfolio WHERE id= {id}"
             cursor.execute(sql_stat)
             connection.commit()
-            filename = self.df.loc[self.df['id']==id, 'filename'].values[0]
-            os.remove(config.PORTFOLIO_PATH + filename)
+
             self.__init__()
             return True
         except Exception  as e:
@@ -121,9 +124,11 @@ class Portfolio(object):
         strategyname = self.df.loc[self.df['id']==id, 'strategy'].values[0]
         start_date = self.df.loc[self.df['id']==id, 'start_date'].values[0]
         param_dict = self.df.loc[self.df['id']==id, 'param_dict'].values[0]
-        ofilename = self.df.loc[self.df['id']==id, 'filename'].values[0]
 
-        if isinstance(start_date, np.datetime64):
+        if type(param_dict) == str:
+            param_dict = json.loads(param_dict)
+
+        if isinstance(start_date, np.datetime64) or type(start_date) == str:
             start_date=pd.to_datetime(start_date)
 
         symbolsDate_dict = {
@@ -150,12 +155,14 @@ class Portfolio(object):
                 
         try:
             filename = str(datetime.now().timestamp()) + '.pf'
-            sql_stat = f"UPDATE portfolio SET end_date='{end_date}', total_return={total_return}, lastday_return={lastday_return}, annual_return={annual_return}, sharpe_ratio={sharpe_ratio}, maxdrawdown={maxdrawdown}, filename='{filename}'" 
-            sql_stat = sql_stat + f" WHERE id={id};"
-            cursor.execute(sql_stat)
-            connection.commit()
             pf.save(config.PORTFOLIO_PATH + filename)
-            os.remove(config.PORTFOLIO_PATH + ofilename)
+            with open(config.PORTFOLIO_PATH + filename, 'rb') as pf_file:
+                pf_blob = pf_file.read()
+                pf_file.close()
+                os.remove(config.PORTFOLIO_PATH + filename)    
+                cursor.execute("UPDATE portfolio SET end_date=?, total_return=?, lastday_return=?, annual_return=?, sharpe_ratio=?, maxdrawdown=?, vbtpf=? WHERE id=?",
+                        (end_date, total_return,lastday_return, annual_return, sharpe_ratio, maxdrawdown, pf_blob, id))
+                connection.commit()
 
         except FileNotFoundError as e:
             print(e)

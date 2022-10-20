@@ -27,9 +27,11 @@ def get_ULInd():
         output_names = ['entry_signal', 'exit_signal']
     ).from_apply_func(apply_ul_nb)
 
-class CSPRStrategy0(BaseStrategy):
-    '''CSPR strategy'''
-    _name = "CSPR"
+class CSPR0Strategy(BaseStrategy):
+    '''CSPR strategy0
+        find Candle_Stick_Pattern_Recognitions' Score to buy and sell
+    '''
+    _name = "CSPR0"
     param_def = [
             {
             "name": "upper",
@@ -68,8 +70,11 @@ class CSPRStrategy0(BaseStrategy):
         exits = ul_indicator.exit_signal
 
         pf = vbt.Portfolio.from_signals(
-                close=ohlcv['close'], entries=entries, exits=exits, open=ohlcv['open'],
-                fees=0.001, slippage=0.001,freq='1D')
+                close=ohlcv['close'], 
+                entries=entries, 
+                exits=exits, 
+                open=ohlcv['open'],
+                **self.pf_kwargs)
 
         if len(uppers) > 1:
             if output_bool:
@@ -88,7 +93,10 @@ class CSPRStrategy0(BaseStrategy):
         self.pf = pf
    
 class CSPRStrategy(BaseStrategy):
-    '''CSPR strategy'''
+    '''CSPR strategy
+        find N Candle_Stick_Pattern_Recognitions' combinations
+    '''
+    
     _name = "CSPR"
     param_def = [
             {
@@ -119,8 +127,10 @@ class CSPRStrategy(BaseStrategy):
                 idx_list.append(idx)
 
         if type(patterns[0]) == str:
+            # update call
             prCombs = [tuple(PR_list.index(s) for s in patterns[0].split(','))]
         else:
+            # maxSR call
             number = patterns[0]
             prCombs = list(combinations((idx_list), number))
 

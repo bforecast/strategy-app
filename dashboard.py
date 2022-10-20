@@ -35,7 +35,7 @@ def show_PortfolioTable(portfolio_df):
                     TableColumn(field='total_return', title='Total Return', width=120, formatter=NumberFormatter(format='0:.0%', text_align='right')),
                     TableColumn(field='maxdrawdown', title='Max DD', width=120, formatter=NumberFormatter(format='0:.0%', text_align='right')),
                     TableColumn(field='symbols', title='Symbols', width=120),
-                    TableColumn(field='end_date', title='End Date', width=120, formatter=DateFormatter(format='%Y-%m-%d')),
+                    TableColumn(field='end_date', title='End Date', width=120,),
                     # TableColumn(field='description', title='Parameters')
                     ]
         # define events
@@ -52,7 +52,7 @@ def show_PortfolioTable(portfolio_df):
             )
 
         table = DataTable(source=cds, columns=columns, row_height=33, selectable="checkbox",
-                        index_position = None, aspect_ratio='auto', scroll_to_selection=True, height=300, width=700)
+                        index_position = None, aspect_ratio='auto', scroll_to_selection=True, height=500, width=800)
 
         result = streamlit_bokeh_events(
                     bokeh_plot=table,
@@ -60,7 +60,7 @@ def show_PortfolioTable(portfolio_df):
                     key="foo",
                     refresh_on_update=True,
                     # debounce_time=10,
-                    override_height=300
+                    override_height=500
                 )
 
         if result and result.get("INDEX_SELECT"):
@@ -139,24 +139,75 @@ def main():
     portfolio = Portfolio()
     selected_pfs = show_PortfolioTable(portfolio.df)
     if len(selected_pfs) > 1:
-        ##多portoflio比较
-        return_df = pd.DataFrame()
+        ##多portfolio比较
+        value_df = pd.DataFrame()
+        position_df = pd.DataFrame()
         for index in selected_pfs:
-            filename = portfolio.df.iloc[index].at['filename']
-            pf = vbt.Portfolio.load(config.PORTFOLIO_PATH + '/' + filename)
-            return_df[portfolio.df.iloc[index].at['name']] = pf.returns()
+            pf = vbt.Portfolio.loads(portfolio.df.iloc[index].at['vbtpf'])
+            value_df[portfolio.df.iloc[index].at['name']] = pf.value()
+            position_df[portfolio.df.iloc[index].at['name']] = pf.position_mask()
             show_PortforlioDetail(portfolio.df, index)
-        return_df = return_df.cumsum()
-        return_df.fillna(method='ffill', inplace=True)
-        return_df['mean'] = return_df.mean(axis=1)
-        st.line_chart(return_df)
-        if st.button("PairTrade"):
-            pf = pairtrade_pfs(return_df.columns[0], return_df.columns[1],
-                               return_df.iloc[:,0], return_df.iloc[:,1], True)
-            if pf:
-                plot_pf(pf)
-            else:
-                st.error(f"Fail to PairTrade '{return_df.columns[0]}' and '{return_df.columns[1]}'.")
+        # value_df = value_df.cumsum()
+        value_df.fillna(method='ffill', inplace=True)
+        # value_df['mean'] = value_df.mean(axis=1)
+        st.line_chart(value_df)
+        st.plotly_chart(position_df.vbt.plot(), user_container_width = True)
+
+        if len(selected_pfs) == 2:
+            if st.button("PairTrade"):
+                pf = pairtrade_pfs(value_df.columns[0], value_df.columns[1],
+                                value_df.iloc[:,0], value_df.iloc[:,1], True)
+                if pf:
+                    plot_pf(pf)
+                else:
+                    st.error(f"Fail to PairTrade '{value_df.columns[0]}' and '{value_df.columns[1]}'.")
+            
+            if st.button("Master/Backup"):
+                    # _price = value_df.vbt.tile(1, keys=pd.Index([0], name='symbol_group'))
+                    # ms_sizes = np.full_like(_price, np.nan)
+                    # ms_sizes[:, 0] = position_df.iloc[:,0].map(lambda x: 1 if x else 0)
+                    # ms_sizes[:, 1] = position_df.iloc[:,0].map(lambda x: 0 if x else 1)
+                    # pf_kwargs = dict(fees=0.001, freq='1D')
+                    # ms_pf = vbt.Portfolio.from_orders(close=_price, 
+                    #                                 size=ms_sizes, 
+                    #                                 size_type='targetpercent',
+                    #                                 group_by = True,
+                    #                                 init_cash=100,
+                    #                                 cash_sharing=True, 
+                    #                                 **pf_kwargs)
+                    symbol1 = value_df.columns[0]
+                    symbol2 = value_df.columns[1]
+
+                    symbol_cols = pd.Index([symbol1, symbol2], name='symbol')
+                    # Build percentage order size
+                    vbt_order_size = pd.DataFrame(index=value_df.index, columns=symbol_cols)
+                    vbt_order_size[symbol1] = 0
+                    vbt_order_size[symbol2] = 1
+                    vbt_order_size.loc[position_df.iloc[:,0], symbol1] = 1
+                    vbt_order_size.loc[position_df.iloc[:,0], symbol2] = 0
+                    # Execute at the next bar
+                    vbt_order_size = vbt_order_size.vbt.fshift(1)
+
+                    vbt_close_price = pd.concat((value_df.iloc[:,0], value_df.iloc[:,1]), axis=1, keys= symbol_cols)
+
+                    pf_kwargs = dict(fees=0.001, freq='1D')
+                    ms_pf = vbt.Portfolio.from_orders(
+                                                    vbt_close_price,  # current close as reference price
+                                                    size=vbt_order_size,  
+                                                    price=vbt_close_price,  # current open as execution price
+                                                    size_type='targetpercent', 
+                                                    init_cash=100,
+                                                    cash_sharing=True,  # share capital between assets in the same group
+                                                    group_by=True,  # all columns belong to the same group
+                                                    call_seq='auto',  # sell before buying
+                                                    **pf_kwargs)
+                    plot_pf(ms_pf)
+                    records_df = ms_pf.orders.records_readable
+                    st.text(records_df)
+                    value_df["MS"] = ms_pf.value()
+                    st.line_chart(value_df)
+
+
 
     elif len(selected_pfs) == 1 :
         ##单portforlio详情
@@ -173,7 +224,7 @@ def main():
                 deletepf_bool = st.button('Delete')
 
             if showpf_bool:
-                show_pffromfile(portfolio.df.loc[index, 'filename'])
+                show_pffromfile(portfolio.df.loc[index, 'vbtpf'])
             if morepf_bool:
                 show_PortforlioYearly(portfolio.df.iloc[index, :])
             if updatepf_bool:

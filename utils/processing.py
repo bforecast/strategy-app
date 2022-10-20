@@ -230,8 +230,10 @@ class AKData(object):
 
                 stock_df = eval(func)(symbol=symbol_full, start_date=start_date.strftime("%Y%m%d"), end_date=end_date.strftime("%Y%m%d"))
                 if not stock_df.empty:
-                    # stock_df = stock_df.iloc[:,:6]
-                    stock_df.columns = ['date', 'open', 'close', 'high', 'low','volume', 'amount',
+                    if len(stock_df.columns) == 7:
+                        stock_df.columns = ['date', 'open', 'close', 'high', 'low','volume', 'amount']
+                    else:    
+                        stock_df.columns = ['date', 'open', 'close', 'high', 'low','volume', 'amount',
                                         'amplitude', 'changepercent', 'pricechange','turnoverratio']
                     stock_df.index = pd.to_datetime(stock_df['date'], utc=True)
         return stock_df
@@ -250,6 +252,31 @@ class AKData(object):
                 if not stock_df.empty:
                     stock_df.index = pd.to_datetime(stock_df['date'], utc=True)
                     stock_df = stock_df['value']
+        return stock_df
+
+    def get_pegttm(self, symbol:str) ->pd.DataFrame:
+        stock_df = pd.DataFrame()
+        symbol_df = load_symbol(symbol)
+
+        if len(symbol_df)==1:  #self.symbol_dict.keys():
+                if self.market =="CN" and len(symbol) > 6:
+                    func = 'get_cn_index'
+                else:
+                    func = ('get_' + self.market + '_valuation').lower()
+
+                pettm_df = eval(func)(symbol=symbol, indicator='市盈率(TTM)')
+                mv_df = eval(func)(symbol=symbol, indicator='总市值')
+                pettm_df.index = pd.to_datetime(pettm_df['date'], utc=True)
+                mv_df.index = pd.to_datetime(mv_df['date'], utc=True)
+
+                if not mv_df.empty:
+                    stock_df = pd.DataFrame()
+                    stock_df['pettm'] = pettm_df['value']
+                    stock_df['mv'] = mv_df['value']
+                    stock_df['earning'] = stock_df['mv']/stock_df['pettm']
+                    stock_df['cagr'] = stock_df['earning'].pct_change(periods=252)
+                    stock_df['pegttm'] = stock_df['pettm'] / stock_df['cagr']/100
+                    stock_df = stock_df['pegttm']
         return stock_df
 
 

@@ -171,17 +171,14 @@ class PETORStrategy(BaseStrategy):
         ind = petor.run(pettm_pers, tor_pers, pe_rankH=pe_rankHs,  pe_rankL=pe_rankLs, 
                     tor_rank=tor_ranks, param_product=True)
 
-        # entries = (~ind.entries.isnull()).vbt.signals.fshift()
-        # exits = (~ind.exits.isnull()).vbt.signals.fshift()
-        entries = ind.entries
-        exits = ind.exits
-        pf_kwargs = dict(fees=0.001, freq='1D')
+        entries = ind.entries.vbt.signals.fshift()
+        exits = ind.exits.vbt.signals.fshift()
         pf = vbt.Portfolio.from_signals(
             close= close_price,
             open= open_price, 
             entries= entries, 
             exits= exits,
-            **pf_kwargs
+            **self.pf_kwargs
             )
         if len(pe_rankHs) > 1:
             if output_bool:
@@ -196,9 +193,12 @@ class PETORStrategy(BaseStrategy):
                 idxmax = (pf.total_return().idxmax())
 
             SRs = pf.sharpe_ratio()
-            idxmax = SRs[SRs != np.inf].idxmax()
-            pf = pf[idxmax]
-            self.param_dict = dict(zip(['pe_rankH', 'pe_rankL', 'tor_rank'], [int(idxmax[0]), int(idxmax[1]), int(idxmax[2])]))        
+            if len(SRs[SRs != np.inf]) == 0:
+                return False
+            else:
+                idxmax = SRs[SRs != np.inf].idxmax()
+                pf = pf[idxmax]
+                self.param_dict = dict(zip(['pe_rankH', 'pe_rankL', 'tor_rank'], [int(idxmax[0]), int(idxmax[1]), int(idxmax[2])]))        
         if output_bool:
             fig = tor_pers.vbt.plot(yaxis_title="Total Return Ratio")
             fig = pettm_pers.vbt.plot(yaxis_title="Rank Percentage", fig=fig)

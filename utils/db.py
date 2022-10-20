@@ -1,7 +1,9 @@
+from distutils.log import error
 import pandas as pd
 import psycopg2
 from psycopg2.extras import DictCursor
 import warnings
+import sqlite3
 
 import streamlit as st
 
@@ -12,8 +14,14 @@ warnings.filterwarnings('ignore')
 @st.experimental_singleton
 def init_connection():
     try:
-        connection = psycopg2.connect(**st.secrets["postgres"])
-        cursor = connection.cursor(cursor_factory=DictCursor)
+        if st.secrets['database'] == 'sqlite3':
+            connection = sqlite3.connect(st.secrets['sqlite3']['dbname'], check_same_thread=False)
+            cursor = connection.cursor()
+        elif st.secrets['database'] == 'postgres':
+            connection = psycopg2.connect(**st.secrets["postgres"])
+            cursor = connection.cursor(cursor_factory=DictCursor)
+        else:
+            raise error
         return connection, cursor
     except Exception  as e:
         print("Connnecting Database Error:", e)

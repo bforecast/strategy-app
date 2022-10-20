@@ -34,8 +34,8 @@ def plot_allocation(rb_pf, symbols):
         )
     return fig
 
-def show_pffromfile(filename:str):
-    pf = vbt.Portfolio.load(config.PORTFOLIO_PATH + filename)
+def show_pffromfile(vbtpf):
+    pf = vbt.Portfolio.loads(vbtpf)
     plot_pf(pf)
 
 def plot_pf(pf):
@@ -45,9 +45,11 @@ def plot_pf(pf):
     subplots = st.multiselect("Select subplots:", Portfolio.subplots.keys(),
                     ['cum_returns','orders', 'trade_pnl', 'drawdowns'], key='multiselect_'+str(pf.total_return()))
     if len(subplots) > 0:
+        fig = pf.position_mask().vbt.plot()
         st.plotly_chart(
             pf.plot(
                 subplots=subplots,
-            )
+            ),
+            fig = fig
         )
     st.text(pf.returns_stats()) 

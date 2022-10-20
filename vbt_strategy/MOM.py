@@ -64,15 +64,20 @@ class MOMStrategy(BaseStrategy):
         windows = self.param_dict['window']
         uppers = self.param_dict['upper']
         lowers = self.param_dict['lower']
-        price = self.stock_dfs[0][1].close
+        close = self.stock_dfs[0][1].close
+        open = self.stock_dfs[0][1].open
         symbol = self.stock_dfs[0][0]
 
-        mom_indicator = get_MomInd().run(price, window=windows, lower=lowers, upper=uppers,\
+        mom_indicator = get_MomInd().run(close, window=windows, lower=lowers, upper=uppers,\
             param_product=True)
-        entries = mom_indicator.entry_signal
-        exits = mom_indicator.exit_signal
-        pf = vbt.Portfolio.from_signals(price, entries, exits, fees=0.002, freq='1D')
-        
+          
+        entries = mom_indicator.entry_signal.vbt.signals.fshift()
+        exits = mom_indicator.exit_signal.vbt.signals.fshift()
+        pf = vbt.Portfolio.from_signals(close=close,
+                        open = open, 
+                        entries = entries, 
+                        exits = exits, 
+                        **self.pf_kwargs)
         if output_bool:
             # Draw all window combinations as a 3D volume
             fig = pf.total_return().vbt.volume(

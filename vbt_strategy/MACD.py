@@ -55,13 +55,16 @@ class MACDStrategy(BaseStrategy):
 
         # Long when MACD is above zero AND signal
         entries = macd_ind.macd_above(0) & macd_ind.macd_above(macd_ind.signal)
-
         # Short when MACD is below zero OR signal
         exits = macd_ind.macd_below(0) | macd_ind.macd_below(macd_ind.signal)
 
+        #Don't look into the future
+        entries = entries.vbt.signals.fshift()
+        exits = exits.vbt.signals.fshift()
+
         # Build portfolio
         pf = vbt.Portfolio.from_signals(
-            price, entries, exits, fees=0.001, freq='1D')
+            price, entries, exits, **self.pf_kwargs)
 
         if len(fast_windows) > 1:
             if output_bool:

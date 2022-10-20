@@ -94,11 +94,12 @@ class MOM_RSIStrategy(BaseStrategy):
         else:
             entries = mom_entries | rsi_entries
             exits = mom_exits | rsi_exits
-        # st.text(mom_entries)
-        # st.text(rsi_entries_df)
-        # st.text(entries)
+
+        #Don't look into the future
+        entries = entries.vbt.signals.fshift()
+        exits = exits.vbt.signals.fshift()
         
-        pf = vbt.Portfolio.from_signals(price, entries, exits, fees=0.002, freq='1D')
+        pf = vbt.Portfolio.from_signals(price, entries, exits, **self.pf_kwargs)
         
         if output_bool:
             # Draw all window combinations as a 3D volume
