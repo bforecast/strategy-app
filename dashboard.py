@@ -9,7 +9,7 @@ import streamlit as st
 
 st.set_page_config(initial_sidebar_state='collapsed')
 
-import psycopg2, psycopg2.extras
+# import psycopg2, psycopg2.extras
 import vectorbt as vbt
 
 from bokeh.models import ColumnDataSource, CustomJS, DateFormatter, NumberFormatter

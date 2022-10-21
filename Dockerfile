@@ -6,6 +6,7 @@ EXPOSE 8501
 
 WORKDIR /app
 
+RUN sed -i 's#http://deb.debian.org#https://mirrors.163.com#g' /etc/apt/sources.list
 RUN apt-get update && apt-get install -y \
     build-essential \
     software-properties-common \
