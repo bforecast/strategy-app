@@ -1,6 +1,6 @@
 import streamlit as st
 
-from utils.component import input_SymbolsDate, button_SavePortfolio, check_password, params_selector
+from utils.component import input_SymbolsDate, button_SavePortfolio, check_password, params_selector, form_SavePortfolio
 from vbt_strategy.MA import MAStrategy
 
 def check_params(params):
@@ -25,7 +25,7 @@ if check_password():
                 if check_params(params):
                     if strategy.maxSR(params, output_bool=True):
                         st.text("Max Sharpe_Ratio's parameters:    " + str(strategy.param_dict))
-                        button_SavePortfolio(symbolsDate_dict, strategyname, strategy.param_dict, strategy.pf)
+                        form_SavePortfolio(symbolsDate_dict, strategyname, strategy.param_dict, strategy.pf)
                     else:
                         st.error("Stocks don't match the Strategy")
             else:

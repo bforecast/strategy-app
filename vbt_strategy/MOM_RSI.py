@@ -61,6 +61,7 @@ class MOM_RSIStrategy(BaseStrategy):
             },
     ]
 
+    @vbt.cached_method
     def run(self, output_bool=False):
         windows = self.param_dict['window']
         uppers = self.param_dict['upper']

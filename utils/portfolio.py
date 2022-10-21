@@ -25,7 +25,7 @@ class Portfolio(object):
     def __init__(self):
         self.df = pd.read_sql("SELECT * FROM portfolio", connection)
 
-    def add(self, symbolsDate_dict, strategyname, strategy_param, pf)->bool:
+    def add(self, symbolsDate_dict:dict, strategyname:str, strategy_param, pf, description="desc")->bool:
         """
             add a portforlio to db/table
             input:
@@ -67,7 +67,6 @@ class Portfolio(object):
                 maxdrawdown = round(pf.stats('max_dd')[0]/100.0, 2)
                 annual_return = round(pf.annualized_return(), 2)
                 lastday_return = round(pf.returns()[-1], 4)
-                description = strategyname
 
                 cursor.execute("INSERT INTO portfolio (id, name, description, create_date, start_date, end_date, total_return, annual_return, lastday_return, sharpe_ratio, maxdrawdown, param_dict, strategy, symbols, market, vbtpf) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                             (None, name, description, datetime.today(), start_date, end_date, total_return, annual_return, lastday_return, sharpe_ratio, maxdrawdown, param_json, strategyname, tickers, market, pf_blob))
@@ -117,6 +116,7 @@ class Portfolio(object):
                 True  = update the library and save the pf file successfully
 
         """
+        id = int(id)
         end_date= date.today()
         end_date = datetime(year=end_date.year, month=end_date.month, day=end_date.day, tzinfo=pytz.utc)
         market = self.df.loc[self.df['id']==id, 'market'].values[0]

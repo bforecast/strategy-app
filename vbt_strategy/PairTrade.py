@@ -204,6 +204,7 @@ class PairTradeStrategy(BaseStrategy):
             },
         ]
 
+    @vbt.cached_method
     def run(self, output_bool=False):
         #initialize Parameters
         window = 100

@@ -59,6 +59,23 @@ def button_SavePortfolio0(symbolsDate_dict, strategyname:str, strategy_param:dic
             else:
                 st.error('Fail to save the portfolio.')
 
+def form_SavePortfolio(symbolsDate_dict, strategyname:str, strategy_param:dict, pf):
+    with st.expander("Edit description and Save"):
+        with st.form("form_" + strategyname):
+            desc_str = st.text_area("Description", value=strategyname)
+            submitted = st.form_submit_button("Save")
+            if submitted:
+                portfolio = Portfolio()
+                if portfolio.add(symbolsDate_dict, strategyname, strategy_param, pf, desc_str):
+                    st.success("Save the portfolio sucessfully.")
+                else:
+                    st.error('Fail to save the portfolio.')
+
+
+
+
+
+
 def check_password():
     # hide_bar()
     """Returns `True` if the user had the correct password."""

@@ -135,7 +135,7 @@ class PETORStrategy(BaseStrategy):
             },
         ]
 
-
+    @vbt.cached_method
     def run(self, output_bool=False):
         close_price = self.stock_dfs[0][1].close
         open_price = self.stock_dfs[0][1].open

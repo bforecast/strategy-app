@@ -85,6 +85,7 @@ def show_PortforlioDetail(portfolio_df, index):
         with cols[4]:
             st.markdown("**Parameters**")
             st.text(param_dict)
+        st.markdown(portfolio_df.at[index, 'description'])
         return True
     else:
         return False
@@ -204,7 +205,7 @@ def main():
                     plot_pf(ms_pf)
                     records_df = ms_pf.orders.records_readable
                     st.text(records_df)
-                    value_df["MS"] = ms_pf.value()
+                    value_df["Master/Backup"] = ms_pf.value()
                     st.line_chart(value_df)
 
 

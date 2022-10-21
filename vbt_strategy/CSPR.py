@@ -49,7 +49,7 @@ class CSPR0Strategy(BaseStrategy):
             },
         ]
 
-
+    @vbt.cached_method
     def run(self, output_bool=False):
         ohlcv = self.stock_df[0][1]
         uppers = self.param_dict['upper']

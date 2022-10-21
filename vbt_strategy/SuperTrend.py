@@ -73,6 +73,7 @@ class SuperTrendStrategy(BaseStrategy):
             },
     ]
 
+    @vbt.cached_method
     def run(self, output_bool=False):
         windows = self.param_dict['window']
         multipliers = self.param_dict['multiplier']

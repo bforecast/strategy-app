@@ -35,7 +35,7 @@ class MACDStrategy(BaseStrategy):
             },
         ]
 
-
+    @vbt.cached_method
     def run(self, output_bool=False):
         price = self.stock_dfs[0][1].close
         

@@ -17,7 +17,7 @@ class MAStrategy(BaseStrategy):
             "step": 1   
             },
         ]
-
+    @vbt.cached_method
     def run(self, output_bool=False)->bool:
         price = self.stock_dfs[0][1].close
         if "window" in self.param_dict.keys():

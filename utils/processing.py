@@ -266,10 +266,10 @@ class AKData(object):
 
                 pettm_df = eval(func)(symbol=symbol, indicator='市盈率(TTM)')
                 mv_df = eval(func)(symbol=symbol, indicator='总市值')
-                pettm_df.index = pd.to_datetime(pettm_df['date'], utc=True)
-                mv_df.index = pd.to_datetime(mv_df['date'], utc=True)
 
-                if not mv_df.empty:
+                if not mv_df.empty and not pettm_df.empty:
+                    pettm_df.index = pd.to_datetime(pettm_df['date'], utc=True)
+                    mv_df.index = pd.to_datetime(mv_df['date'], utc=True)
                     stock_df = pd.DataFrame()
                     stock_df['pettm'] = pettm_df['value']
                     stock_df['mv'] = mv_df['value']

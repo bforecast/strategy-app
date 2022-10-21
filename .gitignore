@@ -1,3 +1,4 @@
 _pycache_
 .streamlit
-portfolio
+*.ipynb
+try_*
