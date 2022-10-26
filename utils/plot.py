@@ -52,4 +52,8 @@ def plot_pf(pf):
             ),
             fig = fig
         )
-    st.text(pf.returns_stats()) 
+    tab1, tab2 = st.tabs(["Return's stats", "Orders' records"])
+    with tab1:
+        st.text(pf.returns_stats()) 
+    with tab2:
+        st.text(pf.orders.records_readable) 

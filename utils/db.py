@@ -30,7 +30,7 @@ def init_connection():
 # Initialize connection.
 connection, cursor = init_connection()
 
-# @st.cache(allow_output_mutation=True, ttl = 86400)
+@st.cache(allow_output_mutation=True, ttl = 86400)
 def load_symbols():
         # cursor.execute("SELECT strategy_id, symbol, exchange, name FROM strategy_stock \
         #                     JOIN stock ON stock.id = strategy_stock.stock_id")
@@ -38,6 +38,7 @@ def load_symbols():
         result_df = pd.read_sql("SELECT * FROM stock", connection)
         return result_df
 
+@st.cache(allow_output_mutation=True, ttl = 86400)
 def load_symbol(symbol:str):
         # cursor.execute("SELECT strategy_id, symbol, exchange, name FROM strategy_stock \
         #                     JOIN stock ON stock.id = strategy_stock.stock_id")
@@ -45,6 +46,19 @@ def load_symbol(symbol:str):
         try:
             result_df = pd.read_sql(f"SELECT * FROM stock WHERE symbol='{symbol}'", connection)
             return result_df
+
+        except Exception as e:
+            st.error(f"Connnecting Database Error: {e}")
+            return None
+
+@st.cache(allow_output_mutation=True, ttl = 86400)
+def get_symbolname(symbol:str):
+        # cursor.execute("SELECT strategy_id, symbol, exchange, name FROM strategy_stock \
+        #                     JOIN stock ON stock.id = strategy_stock.stock_id")
+        # symbols_df = cursor.fetchall()
+        try:
+            result_df = pd.read_sql(f"SELECT name FROM stock WHERE symbol='{symbol}'", connection)
+            return result_df.loc[0, 'name']
 
         except Exception as e:
             st.error(f"Connnecting Database Error: {e}")

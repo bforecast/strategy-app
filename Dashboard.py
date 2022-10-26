@@ -21,10 +21,11 @@ from utils.component import check_password, params_selector
 from utils.portfolio import Portfolio
 from vbt_strategy.PairTrade import pairtrade_pfs
 from pages.Strategy import check_params
+from utils.db import get_symbolname
 
 import config
 
-def show_PortfolioTable(portfolio_df):
+def bokehTable(portfolio_df):
         portfolio_df = portfolio_df[['name', 'annual_return','lastday_return', 'sharpe_ratio', 'total_return', 'maxdrawdown', 'symbols', 'end_date']]
         cds = ColumnDataSource(portfolio_df)
         columns = [
@@ -52,7 +53,7 @@ def show_PortfolioTable(portfolio_df):
             )
 
         table = DataTable(source=cds, columns=columns, row_height=33, selectable="checkbox",
-                        index_position = None, aspect_ratio='auto', scroll_to_selection=True, height=500, width=800)
+                        index_position = None, aspect_ratio='auto', scroll_to_selection=True, height=500, width=900)
 
         result = streamlit_bokeh_events(
                     bokeh_plot=table,
@@ -62,11 +63,56 @@ def show_PortfolioTable(portfolio_df):
                     # debounce_time=10,
                     override_height=500
                 )
-
         if result and result.get("INDEX_SELECT"):
-            return result.get("INDEX_SELECT")["data"]
+            idata = result.get("INDEX_SELECT")["data"]
+            cds_df = cds.to_df()
+            for i in idata:
+                if i not in cds_df.index.values:
+                    return []
+            return cds_df.loc[idata, 'index'].to_list()
         else:
             return []
+
+def show_PortfolioTable(portfolio_df):
+    def stringlist_to_set(strlist: list):
+        slist = []
+        for sstr in strlist:
+            for s in sstr.split(','):
+                slist.append(s)
+        slist = list(dict.fromkeys(slist))
+        slist.sort()
+        return(slist)
+    
+    def selectpf_bySymbols(df, symbols:list):
+        ids = set()
+        for i, row in df.iterrows():
+            for s in row['symbols'].split(','):
+                if s in symbols:
+                    ids.add(i)
+        return df.loc[ids,:]
+
+    symbols = stringlist_to_set(portfolio_df['symbols'].values)
+    if 'symbolsSel' not in st.session_state:
+        st.session_state['symbolsSel'] = symbols
+
+    with st.form(key='selectSymbols_form'):
+        col1, col2 = st.columns([7, 1])
+        with col1:
+            sSel = st.multiselect("Please select symbols:", symbols, 
+                                format_func=lambda x: get_symbolname(x)+x,
+                                help='empty means all')
+        with col2:
+            st.text('')
+            st.text('')
+            if st.form_submit_button("Select"):
+                if len(sSel) > 0:
+                    st.session_state['symbolsSel'] = sSel
+                else:
+                    st.session_state['symbolsSel'] = symbols
+
+    df = selectpf_bySymbols(portfolio_df, st.session_state['symbolsSel'])
+    selectpf = bokehTable(df)
+    return(selectpf)
 
 def show_PortforlioDetail(portfolio_df, index):
     if index > -1 and (index in portfolio_df.index):
@@ -85,7 +131,8 @@ def show_PortforlioDetail(portfolio_df, index):
         with cols[4]:
             st.markdown("**Parameters**")
             st.text(param_dict)
-        st.markdown(portfolio_df.at[index, 'description'])
+        st.markdown("**Description**")
+        st.markdown(portfolio_df.at[index, 'description'], unsafe_allow_html=True)
         return True
     else:
         return False
@@ -203,8 +250,6 @@ def main():
                                                     call_seq='auto',  # sell before buying
                                                     **pf_kwargs)
                     plot_pf(ms_pf)
-                    records_df = ms_pf.orders.records_readable
-                    st.text(records_df)
                     value_df["Master/Backup"] = ms_pf.value()
                     st.line_chart(value_df)
 

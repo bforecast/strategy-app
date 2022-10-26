@@ -1,6 +1,6 @@
 import streamlit as st
 
-from utils.component import input_SymbolsDate, button_SavePortfolio, check_password, params_selector, form_SavePortfolio
+from utils.component import input_SymbolsDate, check_password, form_SavePortfolio
 from utils.plot import plot_pf
 from vbt_strategy.MA import MAStrategy
 

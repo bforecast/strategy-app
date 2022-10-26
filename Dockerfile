@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone https://github.com/bforecast/strategy-app.git .
+RUN echo &&git clone https://github.com/bforecast/strategy-app.git .
 RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 RUN python -m pip install --upgrade pip
 

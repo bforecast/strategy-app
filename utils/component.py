@@ -3,6 +3,8 @@ import pytz
 import numpy as np
 
 import streamlit as st
+from streamlit_quill import st_quill
+
 from utils.portfolio import Portfolio
 
 
@@ -30,39 +32,11 @@ def input_dates():
     end_date = datetime(year=end_date.year, month=end_date.month, day=end_date.day, tzinfo=pytz.utc)
     return start_date, end_date
 
-def button_SavePortfolio(symbolsDate_dict, strategyname:str, strategy_param:dict, pf):
-     # Define callbacks to handle button clicks.
-    col1, col2 = st.columns([1,4])
-    def handle_click(symbolsDate_dict, strategyname:str, strategy_param:dict, pf):
-        portfolio = Portfolio()
-        if portfolio.add(symbolsDate_dict, strategyname, strategy_param, pf):
-            col2.success("Save the portfolio sucessfully.")
-        else:
-            col2.error('Fail to save the portfolio.')
-
-    with col1:
-        st.button("Save",
-                key= 'button_'+strategyname,
-                on_click = handle_click,
-                args = (symbolsDate_dict, strategyname, strategy_param, pf),
-                )
-
-def button_SavePortfolio0(symbolsDate_dict, strategyname:str, strategy_param:dict, pf):
-    col1, col2 = st.columns([1,4])
-    with col1:
-        button_save = st.button("Save", 'button'+strategyname)
-    with col2:
-        if button_save:
-            portfolio = Portfolio()
-            if portfolio.add(symbolsDate_dict, strategyname, strategy_param, pf):
-                st.success("Save the portfolio sucessfully.")
-            else:
-                st.error('Fail to save the portfolio.')
-
 def form_SavePortfolio(symbolsDate_dict, strategyname:str, strategy_param:dict, pf):
     with st.expander("Edit description and Save"):
         with st.form("form_" + strategyname):
-            desc_str = st.text_area("Description", value=strategyname)
+            # desc_str = st.text_area("Description", value=strategyname)
+            desc_str = st_quill(value= strategyname, html= True)
             submitted = st.form_submit_button("Save")
             if submitted:
                 portfolio = Portfolio()
