@@ -111,6 +111,24 @@ def get_cn_index(symbol:st, start_date:str, end_date:str) -> pd.DataFrame:
     return result_df
 
 @st.cache(allow_output_mutation=True, ttl = 86400)
+def get_cn_fund_etf(symbol:st, start_date:str, end_date:str) -> pd.DataFrame:
+    """get chinese fund etf data新浪财经-基金行情的日频率行情数据
+    Args:
+        ak_params symbol:str, start_date:str 20170301, end_date:str
+
+    Returns:
+        pd.DataFrame: _description_
+    """
+    result_df = ak.fund_etf_hist_sina(symbol=symbol)
+    result_df['date'] = result_df.date.map(lambda x: x.strftime('%Y-%m-%d'))
+
+    start_date = start_date[0:4] + '-' + start_date[4:6] + '-' + start_date[6:]
+    end_date = end_date[0:4] + '-' + end_date[4:6] + '-' + end_date[6:]
+
+    result_df = result_df[(result_df['date'] >= start_date) & (result_df['date'] <= end_date)]
+    return result_df
+
+@st.cache(allow_output_mutation=True, ttl = 86400)
 def get_cn_fundamental(symbol:st) -> pd.DataFrame:
     """get chinese stock pe data乐咕乐股-A 股个股指标: 市盈率, 市净率, 股息率
 
@@ -219,10 +237,7 @@ class AKData(object):
         symbol_df = load_symbol(symbol)
 
         if len(symbol_df)==1:  #self.symbol_dict.keys():
-                if self.market =="CN" and len(symbol) > 6:
-                    func = 'get_cn_index'
-                else:
-                    func = ('get_' + self.market + '_stock').lower()
+                func = ('get_' + self.market + '_'+ symbol_df.at[0, 'category']).lower()
 
                 symbol_full = symbol
                 if self.market =='US':
@@ -230,8 +245,8 @@ class AKData(object):
 
                 stock_df = eval(func)(symbol=symbol_full, start_date=start_date.strftime("%Y%m%d"), end_date=end_date.strftime("%Y%m%d"))
                 if not stock_df.empty:
-                    if len(stock_df.columns) == 7:
-                        stock_df.columns = ['date', 'open', 'close', 'high', 'low','volume', 'amount']
+                    if len(stock_df.columns) <= 7:
+                        stock_df.columns = ['date', 'open', 'close', 'high', 'low','volume']
                     else:    
                         stock_df.columns = ['date', 'open', 'close', 'high', 'low','volume', 'amount',
                                         'amplitude', 'changepercent', 'pricechange','turnoverratio']

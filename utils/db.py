@@ -51,7 +51,6 @@ def load_symbol(symbol:str):
             st.error(f"Connnecting Database Error: {e}")
             return None
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
 def get_symbolname(symbol:str):
         # cursor.execute("SELECT strategy_id, symbol, exchange, name FROM strategy_stock \
         #                     JOIN stock ON stock.id = strategy_stock.stock_id")

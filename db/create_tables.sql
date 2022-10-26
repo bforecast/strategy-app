@@ -3,7 +3,8 @@ CREATE TABLE stock (
     symbol TEXT NOT NULL,
     name TEXT NOT NULL,
     exchange TEXT NOT NULL,
-    is_etf BOOLEAN NOT NULL
+    is_etf BOOLEAN NOT NULL,
+    category TEXT NOT NULL,
 );
 
 CREATE TABLE mention (

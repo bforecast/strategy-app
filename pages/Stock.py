@@ -3,6 +3,8 @@ import streamlit as st
 from utils.component import input_SymbolsDate, check_password, form_SavePortfolio
 from utils.plot import plot_pf
 from vbt_strategy.MA import MAStrategy
+from utils.db import get_symbolname
+
 
 def show_PortforlioDetail(strategy):
     pf = strategy.pf
@@ -60,7 +62,7 @@ def show_PortforlioBrief(strategy):
 if check_password():
     symbolsDate_dict = input_SymbolsDate()
     if len(symbolsDate_dict['symbols']) > 0:
-        st.header(f"{symbolsDate_dict['symbols']} Strategies' comparision board")
+        st.header(f"{get_symbolname(symbolsDate_dict['symbols'][0])} Strategies' comparision board")
         strategy_list = getattr(__import__(f"vbt_strategy"), 'strategy_list')
         for strategyname in strategy_list:
             strategy_cls = getattr(__import__(f"vbt_strategy"), strategyname + 'Strategy')

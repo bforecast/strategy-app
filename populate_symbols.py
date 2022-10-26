@@ -1,13 +1,11 @@
 import config
-import alpaca_trade_api as tradeapi
-import psycopg2
-import psycopg2.extras
+import sqlite3
 import akshare as ak
+import pandas as pd
 
-connection = psycopg2.connect(host=config.DB_HOST, port=config.DB_PORT, database=config.DB_NAME, user=config.DB_USER, password=config.DB_PASS)
-cursor = connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+connection = sqlite3.connect('db/portfolio.db')
+cursor = connection.cursor()
 
-# api = tradeapi.REST(config.API_KEY, config.API_SECRET, base_url=config.API_URL)
 def gen_us_symbol():
     # assets = api.list_assets()
     assets_df = ak.stock_us_spot_em()
@@ -75,8 +73,21 @@ def gen_cnindex_symbol():
         """, (row['名称'], symbol, exchange))
     print(assets_df)
 
+def gen_cnfund_etf():
+    fund_etf_lof_df = ak.fund_etf_category_sina(symbol="LOF基金")
+    fund_etf_etf_df = ak.fund_etf_category_sina(symbol="ETF基金")
+    fund_etf_fb_df = ak.fund_etf_category_sina(symbol="封闭式基金")
+
+    fund_eft_df=pd.concat([fund_etf_lof_df,fund_etf_etf_df,fund_etf_fb_df])
+    for index, row in fund_eft_df.iterrows():
+        cursor.execute(" INSERT INTO stock (id, name, symbol, exchange, is_etf, category) \
+            VALUES (?, ?, ?, 'CN', false, 'FUND_ETF' )", (None, row['名称'], row['代码']))
+    print(fund_eft_df)
+
+
 gen_us_symbol()
 gen_cn_symbol()
 gen_hk_symbol()
 gen_cnindex_symbol()
+gen_cnfund_etf()
 connection.commit()

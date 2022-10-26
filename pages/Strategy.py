@@ -27,7 +27,7 @@ if check_password():
                         st.text("Max Sharpe_Ratio's parameters:    " + str(strategy.param_dict))
                         form_SavePortfolio(symbolsDate_dict, strategyname, strategy.param_dict, strategy.pf)
                     else:
-                        st.error("Stocks don't match the Strategy")
+                        st.error("Stocks don't match the Strategy.")
             else:
                 st.error("None of stocks is valid.")
 
