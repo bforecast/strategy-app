@@ -7,7 +7,7 @@ from datetime import datetime, date
 
 import streamlit as st
 
-st.set_page_config(initial_sidebar_state='collapsed')
+st.set_page_config(initial_sidebar_state='collapsed', layout='wide')
 
 # import psycopg2, psycopg2.extras
 import vectorbt as vbt
@@ -211,18 +211,6 @@ def main():
                     st.error(f"Fail to PairTrade '{value_df.columns[0]}' and '{value_df.columns[1]}'.")
             
             if st.button("Master/Backup"):
-                    # _price = value_df.vbt.tile(1, keys=pd.Index([0], name='symbol_group'))
-                    # ms_sizes = np.full_like(_price, np.nan)
-                    # ms_sizes[:, 0] = position_df.iloc[:,0].map(lambda x: 1 if x else 0)
-                    # ms_sizes[:, 1] = position_df.iloc[:,0].map(lambda x: 0 if x else 1)
-                    # pf_kwargs = dict(fees=0.001, freq='1D')
-                    # ms_pf = vbt.Portfolio.from_orders(close=_price, 
-                    #                                 size=ms_sizes, 
-                    #                                 size_type='targetpercent',
-                    #                                 group_by = True,
-                    #                                 init_cash=100,
-                    #                                 cash_sharing=True, 
-                    #                                 **pf_kwargs)
                     symbol1 = value_df.columns[0]
                     symbol2 = value_df.columns[1]
 

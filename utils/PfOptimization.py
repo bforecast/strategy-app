@@ -16,12 +16,7 @@ from io import BytesIO
 import plotly.express as px
 
 from utils.processing import AKData
-
-def plot_cum_returns(df, title):
-	df = df.cumsum()
-	df.fillna(method='ffill', inplace=True)
-	fig = px.line(df, title=title)
-	return fig
+from utils.plot import plot_cum_returns
 	
 def plot_efficient_frontier_and_max_sharpe(mu, S): 
 	# Optimize portfolio for max Sharpe ratio and plot it out with efficient frontier curve
@@ -76,11 +71,6 @@ def show_pfOpt(symbolsWeightDate_dict:dict):
 	mu = expected_returns.mean_historical_return(stocks_df)
 	S = risk_models.sample_cov(stocks_df)
 
-	# Plot efficient frontier curve
-	# fig = plot_efficient_frontier_and_max_sharpe(mu, S)
-	# fig_efficient_frontier = BytesIO()
-	# fig.savefig(fig_efficient_frontier, format="png")
-		
 	# Get optimized weights
 	ef = EfficientFrontier(mu, S)
 	ef.max_sharpe(risk_free_rate=0.02)

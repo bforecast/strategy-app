@@ -3,6 +3,7 @@ from datetime import datetime
 
 import streamlit as st
 import vectorbt as vbt
+import plotly.express as px
 
 from vectorbt.portfolio.base import Portfolio
 
@@ -38,11 +39,13 @@ def show_pffromfile(vbtpf):
     pf = vbt.Portfolio.loads(vbtpf)
     plot_pf(pf)
 
-def plot_pf(pf):
+def plot_pf(pf, select=True):
     vbt.settings.array_wrapper['freq'] = 'days'
     vbt.settings.returns['year_freq'] = '252 days'
     vbt.settings.portfolio.stats['incl_unrealized'] = True
-    subplots = st.multiselect("Select subplots:", Portfolio.subplots.keys(),
+    subplots = ['cum_returns','orders', 'trade_pnl', 'drawdowns']
+    if select:
+        subplots = st.multiselect("Select subplots:", Portfolio.subplots.keys(),
                     ['cum_returns','orders', 'trade_pnl', 'drawdowns'], key='multiselect_'+str(pf.total_return()))
     if len(subplots) > 0:
         fig = pf.position_mask().vbt.plot()
@@ -57,3 +60,10 @@ def plot_pf(pf):
         st.text(pf.returns_stats()) 
     with tab2:
         st.text(pf.orders.records_readable) 
+
+def plot_cum_returns(df, title):
+    df = df.cumsum()
+	# df.fillna(method='ffill', inplace=True)
+	# fig = px.line(df, title=title)
+	# return fig
+    st.line_chart(df)

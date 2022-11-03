@@ -142,6 +142,9 @@ class Portfolio(object):
         strategy_cli = getattr(__import__(f"vbt_strategy"), f"{strategyname}Strategy")
         strategy = strategy_cli(symbolsDate_dict)
         pf = strategy.update(param_dict)
+        if pf is None:
+            return False
+            
         total_return = round(pf.stats('total_return')[0]/100.0, 2)
         lastday_return = round(pf.returns()[-1], 4)
 

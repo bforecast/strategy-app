@@ -11,3 +11,5 @@ akshare
 PyPortfolioOpt
 streamlit_bokeh_events
 statsmodels
+streamlit_quill
+humanize

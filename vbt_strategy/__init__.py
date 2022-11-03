@@ -9,7 +9,8 @@ from .CSPR import CSPRStrategy
 from .RSI3 import RSI3Strategy
 from .PETOR import PETORStrategy
 from .PEGTOR import PEGTORStrategy
+from .ADX_RSI import ADX_RSIStrategy
 
 
-__all__ = ["MOMStrategy", "PairTradeStrategy", "MAStrategy", "RSIStrategy", "MACDStrategy", "MOM_RSIStrategy", "SuperTrendStrategy", "CSPRStrategy", "RSI3Strategy", "PETORStrategy", "PEGTORStrategy"]
-strategy_list = ["MA", "MACD", "MOM", "PairTrade", "RSI", "MOM_RSI", "SuperTrend", "CSPR", "RSI3", "PETOR", "PEGTOR"]
+__all__ = ["MOMStrategy", "PairTradeStrategy", "MAStrategy", "RSIStrategy", "MACDStrategy", "MOM_RSIStrategy", "SuperTrendStrategy", "CSPRStrategy", "RSI3Strategy", "ADX_RSIStrategy", "PETORStrategy", "PEGTORStrategy"]
+strategy_list = ["MA", "MACD", "MOM", "PairTrade", "RSI", "MOM_RSI", "SuperTrend", "CSPR", "RSI3", "ADX_RSI", "PETOR", "PEGTOR"]

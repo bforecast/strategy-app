@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 import akshare as ak
 import streamlit as st
+import vectorbt as vbt
 
 from utils.db import load_symbol
 
@@ -232,6 +233,7 @@ class AKData(object):
     def __init__(self, market):
         self.market = market
         
+    @vbt.cached_method
     def get_stock(self, symbol:str, start_date:datetime.datetime, end_date:datetime.datetime) -> pd.DataFrame:
         stock_df = pd.DataFrame()
         symbol_df = load_symbol(symbol)
@@ -245,44 +247,49 @@ class AKData(object):
 
                 stock_df = eval(func)(symbol=symbol_full, start_date=start_date.strftime("%Y%m%d"), end_date=end_date.strftime("%Y%m%d"))
                 if not stock_df.empty:
-                    if len(stock_df.columns) <= 7:
-                        stock_df.columns = ['date', 'open', 'close', 'high', 'low','volume']
+                    if len(stock_df.columns) == 6:
+                        stock_df.columns = ['date', 'open', 'close', 'high', 'low', 'volume']
+                    elif len(stock_df.columns) == 7:
+                        stock_df.columns = ['date', 'open', 'close', 'high', 'low', 'volume','amount']
                     else:    
                         stock_df.columns = ['date', 'open', 'close', 'high', 'low','volume', 'amount',
                                         'amplitude', 'changepercent', 'pricechange','turnoverratio']
                     stock_df.index = pd.to_datetime(stock_df['date'], utc=True)
         return stock_df
 
+    @vbt.cached_method
     def get_pettm(self, symbol:str) ->pd.DataFrame:
         stock_df = pd.DataFrame()
         symbol_df = load_symbol(symbol)
 
         if len(symbol_df)==1:  #self.symbol_dict.keys():
-                if self.market =="CN" and len(symbol) > 6:
-                    func = 'get_cn_index'
-                else:
-                    func = ('get_' + self.market + '_valuation').lower()
-
+            func = ('get_' + self.market + '_valuation').lower()
+            try:
                 stock_df = eval(func)(symbol=symbol, indicator='市盈率(TTM)')
-                if not stock_df.empty:
-                    stock_df.index = pd.to_datetime(stock_df['date'], utc=True)
-                    stock_df = stock_df['value']
+            except Exception as e:
+                print("get_pettm()---", e)
+
+            if not stock_df.empty:
+                stock_df.index = pd.to_datetime(stock_df['date'], utc=True)
+                stock_df = stock_df['value']
         return stock_df
 
+    @vbt.cached_method
     def get_pegttm(self, symbol:str) ->pd.DataFrame:
         stock_df = pd.DataFrame()
         symbol_df = load_symbol(symbol)
+        mv_df = pd.DataFrame()
+        pettm_df = pd.DataFrame()
 
         if len(symbol_df)==1:  #self.symbol_dict.keys():
-                if self.market =="CN" and len(symbol) > 6:
-                    func = 'get_cn_index'
-                else:
-                    func = ('get_' + self.market + '_valuation').lower()
-
+            func = ('get_' + self.market + '_valuation').lower()
+            try:
                 pettm_df = eval(func)(symbol=symbol, indicator='市盈率(TTM)')
                 mv_df = eval(func)(symbol=symbol, indicator='总市值')
-
-                if not mv_df.empty and not pettm_df.empty:
+            except Exception as e:
+                print("get_pettm()---", e)
+            
+            if not mv_df.empty and not pettm_df.empty:
                     pettm_df.index = pd.to_datetime(pettm_df['date'], utc=True)
                     mv_df.index = pd.to_datetime(mv_df['date'], utc=True)
                     stock_df = pd.DataFrame()
