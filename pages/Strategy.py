@@ -2,7 +2,6 @@ import streamlit as st
 
 from utils.component import input_SymbolsDate, check_password, params_selector, form_SavePortfolio
 from utils.db import get_symbolname
-from vbt_strategy.MA import MAStrategy
 
 def check_params(params):
     # for key, value in params.items():

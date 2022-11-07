@@ -16,7 +16,7 @@ from bokeh.models import ColumnDataSource, CustomJS, DateFormatter, NumberFormat
 from bokeh.models import DataTable, TableColumn
 from streamlit_bokeh_events import streamlit_bokeh_events
 
-from utils.plot import plot_pf, show_pffromfile
+from utils.vbt import plot_pf, show_pffromfile
 from utils.component import check_password, params_selector
 from utils.portfolio import Portfolio
 from vbt_strategy.PairTrade import pairtrade_pfs

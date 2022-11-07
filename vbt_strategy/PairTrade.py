@@ -290,7 +290,7 @@ class PairTradeStrategy(BaseStrategy):
 
     def maxSR(self, param, output_bool=False):
         if len(self.stock_dfs) > 1:
-            super(PairTradeStrategy, self).maxSR(param, output_bool)
+            return super(PairTradeStrategy, self).maxSR(param, output_bool)
         else:
             return False
     

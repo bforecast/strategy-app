@@ -16,7 +16,7 @@ from io import BytesIO
 import plotly.express as px
 
 from utils.processing import AKData
-from utils.plot import plot_cum_returns
+from utils.vbt import plot_cum_returns
 	
 def plot_efficient_frontier_and_max_sharpe(mu, S): 
 	# Optimize portfolio for max Sharpe ratio and plot it out with efficient frontier curve

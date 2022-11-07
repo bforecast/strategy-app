@@ -45,11 +45,6 @@ def form_SavePortfolio(symbolsDate_dict, strategyname:str, strategy_param:dict, 
                 else:
                     st.error('Fail to save the portfolio.')
 
-
-
-
-
-
 def check_password():
     # hide_bar()
     """Returns `True` if the user had the correct password."""
@@ -69,6 +64,9 @@ def check_password():
         else:
             st.session_state["password_correct"] = False
 
+    if st.secrets["password"]=="":
+        return True
+        
     if "password_correct" not in st.session_state:
         if "password" not in st.session_state:
             # First run, show input for password.

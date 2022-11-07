@@ -2,9 +2,10 @@ import pandas as pd
 import numpy as np
 
 import streamlit as st
+import vectorbt as vbt
 
 from utils.processing import AKData
-from utils.plot import plot_pf
+from utils.vbt import plot_pf
 
 class BaseStrategy(object):
     '''base strategy'''
@@ -30,6 +31,7 @@ class BaseStrategy(object):
                     st.warning(f"Warning: stock '{symbol}' is invalid or missing. Ignore it", icon= "⚠️")
                 else:
                     self.stock_dfs.append((symbol, stock_df))
+        
 
         # initialize param_dict using default param_def
         for param in self.param_def:
@@ -37,7 +39,11 @@ class BaseStrategy(object):
                 self.param_dict[param["name"]] = [int((param["min"] + param['max'])/ 2)]
             else:
                 self.param_dict[param["name"]] = np.arange(param["min"], param["max"], param["step"])
-        
+        #initialize vbt setting
+        vbt.settings.array_wrapper['freq'] = 'days'
+        vbt.settings.returns['year_freq'] = '252 days'
+        vbt.settings.portfolio.stats['incl_unrealized'] = True
+
     def log(self, txt, dt=None, doprint=False):
         pass
 
@@ -59,5 +65,5 @@ class BaseStrategy(object):
             self.param_dict[k] = [v]
 
         self.run()
-        return self.pf    
+        return self.pf
         

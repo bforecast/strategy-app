@@ -4,7 +4,7 @@ from numba import njit
 import streamlit as st
 import vectorbt as vbt
 
-from utils.plot import plot_pf
+from utils.vbt import plot_pf
 from .base import BaseStrategy
 
 
