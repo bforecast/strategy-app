@@ -5,11 +5,10 @@ requests
 numpy
 TA-lib --no-binary=TA-lib
 matplotlib
-pyfolio
 vectorbt
 akshare
-PyPortfolioOpt
 streamlit_bokeh_events
 statsmodels
 streamlit_quill
+riskfolio-lib
 humanize

@@ -258,8 +258,13 @@ def main():
                 deletepf_bool = st.button('Delete')
 
             if showpf_bool:
-                pf = vbt.Portfolio.loads(portfolio.df.loc[index, 'vbtpf'])
-                plot_pf(pf, name=portfolio.df.loc[index, 'name'])
+                try:
+                    pf = vbt.Portfolio.loads(portfolio.df.loc[index, 'vbtpf'])
+                    plot_pf(pf, name=portfolio.df.loc[index, 'name'])
+                except ValueError as ve:
+                    print(f"show_PortforlioDetail:{portfolio.df.loc[index,'name']} error --{ve}")
+                    st.error('Fail to load pf.')
+                    
             if morepf_bool:
                 show_PortforlioYearly(portfolio.df.iloc[index, :])
             if updatepf_bool:

@@ -190,6 +190,7 @@ class Portfolio(object):
     def check_records(self, dt:date) ->pd.DataFrame:
         result_df = pd.DataFrame()
         for i in range(len(self.df)):
+          try:
             pf = vbt.Portfolio.loads(self.df.loc[i,'vbtpf'])
             records_df = pf.orders.records_readable.sort_values(by=['Timestamp'])
             records_df['date'] = records_df['Timestamp'].dt.date
@@ -203,6 +204,10 @@ class Portfolio(object):
                     records.append(row['Side'] + ' ' + symbol_str)
                 result_df = result_df.append({"name": self.df.loc[i,'name'],
                                 "records": ', '.join(records)}, ignore_index=True)
+          except ValueError as ve:
+            print(f"portfolio-check_records:{self.df.loc[i,'name']} error --{ve}")
+            continue
+        
         return result_df
 
     def get(self, strategyname:str) ->pd.DataFrame:
