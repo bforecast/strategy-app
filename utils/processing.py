@@ -239,14 +239,18 @@ class AKData(object):
         symbol_df = load_symbol(symbol)
 
         if len(symbol_df)==1:  #self.symbol_dict.keys():
-                func = ('get_' + self.market + '_'+ symbol_df.at[0, 'category']).lower()
+            func = ('get_' + self.market + '_'+ symbol_df.at[0, 'category']).lower()
 
-                symbol_full = symbol
-                if self.market =='US':
-                    symbol_full = symbol_df.at[0, 'exchange'] + '.' + symbol
-
+            symbol_full = symbol
+            if self.market =='US':
+                symbol_full = symbol_df.at[0, 'exchange'] + '.' + symbol
+            
+            try:
                 stock_df = eval(func)(symbol=symbol_full, start_date=start_date.strftime("%Y%m%d"), end_date=end_date.strftime("%Y%m%d"))
-                if not stock_df.empty:
+            except ValueError as ve:
+                print(f"AKData-get_stock {func} error: {ve}")
+
+            if not stock_df.empty:
                     if len(stock_df.columns) == 6:
                         stock_df.columns = ['date', 'open', 'close', 'high', 'low', 'volume']
                     elif len(stock_df.columns) == 7:
