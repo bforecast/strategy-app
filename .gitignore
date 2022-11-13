@@ -2,3 +2,5 @@ __pycache__
 .streamlit
 *.ipynb
 try_*
+*.pickle
+

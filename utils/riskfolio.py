@@ -9,7 +9,7 @@ import riskfolio.PlotFunctions as plf
 import vectorbt as vbt
 
 from utils.processing import AKData
-from utils.vbt import get_pfByWeight,  plot_cum_returns
+from utils.vbt import get_pfByWeight,  plot_pf
 
 def report(
         returns,
@@ -81,92 +81,12 @@ def report(
 
     return fig
 
-def show_OpMSC(symbolsWeightDate_dict:dict, rm="MV"):
-    '''
-    calculate portfolio Optimized max sharpe ratio
-    and compare to original weights' combinations.
-    '''
-    market = symbolsWeightDate_dict['market']
-    symbols = symbolsWeightDate_dict['symbols']
-    weights = symbolsWeightDate_dict['weights']
-    start_date = symbolsWeightDate_dict['start_date']
-    end_date = symbolsWeightDate_dict['end_date']
-    datas = AKData(market)
-    stocks_df= pd.DataFrame()
-    pct_df = pd.DataFrame()
-
-    for i in range(0, len(symbols)):
-        symbol = symbols[i]
-        if symbol!='':
-            stock_df = datas.get_stock(symbol, start_date, end_date)
-            if not stock_df.empty:
-                stocks_df[symbol] = stock_df.close
-        i+= 1
-
-    stocks_df.dropna(axis=1,how='any', inplace=True)
-    oweights = []
-    for i in range(0, len(symbols)):
-        symbol = symbols[i]
-        if symbol!='':
-            if symbol in stocks_df.columns:
-                pct_df[symbol] = stocks_df[symbol].pct_change().dropna()
-                oweights.append(weights[i])
-            else:
-                st.warning(f"There are Nan values in '{symbol}'.    Ignore it.", icon= "⚠️")
-        i+= 1        
-    port = rp.Portfolio(returns=pct_df)
-    method_mu='hist'
-    method_cov='hist'
-    
-    port.assets_stats(method_mu=method_mu, method_cov=method_cov, d=0.94)
-    # rm = 'MV' # Risk measure used, this time will be variance
-    model="Classic"
-    obj = 'Sharpe' # Objective function, could be MinRisk, MaxRet, Utility or Sharpe
-    hist = True # Use historical scenarios for risk measures that depend on scenarios
-    rf = 0 # Risk free rate
-    l = 0 # Risk aversion factor, only useful when obj is 'Utility'
-    weights_df = port.optimization(model=model, rm=rm, obj=obj, rf=rf, l=l, hist=hist)
-
-    # fig = report(stocks_df, w, rm='MV', rf=0, alpha=0.05, height=6, width=14, others=0.05, nrow=25)
-    # st.pyplot(fig)
-   
-    # Calculate returns of portfolio with optimized weights
-    pfs_df=stocks_df.copy()
-    pfs_df['Optimized Portfolio'] = 0
-    pfs_df['Orignial Portfolio'] = 0
-    i = 0
-    
-    if weights_df is None:
-        st.error("No Optimzied max sharpe portfolio solution.")
-        return
-    for symbol, row in weights_df.iterrows():
-        pfs_df['Optimized Portfolio'] += stocks_df[symbol].pct_change() * row["weights"] * 100
-        pfs_df['Orignial Portfolio'] += stocks_df[symbol].pct_change() * oweights[i]
-        i+=1
-	# Display everything on Streamlit
-    weights_df['Ticker'] = weights_df.index
-    fig = px.pie(weights_df.iloc[0:10], values='weights', names='Ticker', title='Optimized Max Shape Portfolio Weights')
-    st.plotly_chart(fig)
-    # Plot Cumulative Returns of Optimized Portfolio
-    plot_cum_returns(pfs_df[['Orignial Portfolio', 'Optimized Portfolio']], 'Cumulative Returns(%) of Optimized Portfolio')
-
-    # display 2 portfolio stats
-    with st.expander('Portfolios Stats Comparion'):
-        col1, col2 =st.columns([1,1])
-        with col1:
-            st.markdown('**Original Portfolio Stats**')
-            st.text(get_pfByWeight(stocks_df, oweights/sum(oweights)).stats())
-        with col2:
-            st.markdown('**Optimized Portfolio Stats**')
-            st.text(get_pfByWeight(stocks_df, weights_df['weights'].values).stats())
-
-def show_OpMS(stocks_df, rm="MV"):
+def show_OpMS(stocks_df, rm="MV", plotname=""):
     '''
     calculate portfolio Optimized max sharpe ratio
     '''
     pct_df = pd.DataFrame()
     stocks_df.dropna(axis=1,how='any', inplace=True)
-    oweights = []
     for symbol in stocks_df.columns:
         pct_df[symbol] = stocks_df[symbol].pct_change().dropna()
     port = rp.Portfolio(returns=pct_df)
@@ -199,9 +119,6 @@ def show_OpMS(stocks_df, rm="MV"):
     weights_df['Ticker'] = weights_df.index
     fig = px.pie(weights_df.iloc[0:10], values='weights', names='Ticker', title='Optimized Max Shape Portfolio Weights')
     st.plotly_chart(fig)
-    # Plot Cumulative Returns of Optimized Portfolio
-    plot_cum_returns(pfs_df['Optimized Portfolio'], 'Cumulative Returns(%) of Optimized Portfolio')
-
-    # display portfolio stats
-    st.markdown('**Optimized Portfolio Stats**')
-    st.text(get_pfByWeight(stocks_df, weights_df['weights'].values).stats())
+    # Plot Optimized Portfolio
+    pf = get_pfByWeight(stocks_df, weights_df['weights'].values)
+    plot_pf(pf, select=False, name=plotname)

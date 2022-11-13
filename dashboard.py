@@ -7,7 +7,7 @@ from datetime import datetime, date
 
 import streamlit as st
 
-st.set_page_config(initial_sidebar_state='collapsed', layout='wide')
+st.set_page_config(initial_sidebar_state='collapsed',)
 
 # import psycopg2, psycopg2.extras
 import vectorbt as vbt
@@ -16,7 +16,7 @@ from bokeh.models import ColumnDataSource, CustomJS, DateFormatter, NumberFormat
 from bokeh.models import DataTable, TableColumn
 from streamlit_bokeh_events import streamlit_bokeh_events
 
-from utils.vbt import plot_pf, show_pffromfile
+from utils.vbt import plot_pf
 from utils.component import check_password, params_selector
 from utils.portfolio import Portfolio
 from vbt_strategy.PairTrade import pairtrade_pfs
@@ -206,9 +206,9 @@ def main():
                 pf = pairtrade_pfs(value_df.columns[0], value_df.columns[1],
                                 value_df.iloc[:,0], value_df.iloc[:,1], True)
                 if pf:
-                    plot_pf(pf)
+                    plot_pf(pf, name="PairTrade--"+value_df.columns[0]+'&'+value_df.columns[1])
                 else:
-                    st.error(f"Fail to PairTrade '{value_df.columns[0]}' and '{value_df.columns[1]}'.")
+                    st.error(f"Fail to PairTrade '{value_df.columns[0]}' & '{value_df.columns[1]}'.")
             
             if st.button("Master/Backup"):
                     symbol1 = value_df.columns[0]
@@ -237,7 +237,7 @@ def main():
                                                     group_by=True,  # all columns belong to the same group
                                                     call_seq='auto',  # sell before buying
                                                     **pf_kwargs)
-                    plot_pf(ms_pf)
+                    plot_pf(ms_pf, name="Master/Backup--"+symbol1 + '&' + symbol2)
                     value_df["Master/Backup"] = ms_pf.value()
                     st.line_chart(value_df)
 
@@ -258,7 +258,8 @@ def main():
                 deletepf_bool = st.button('Delete')
 
             if showpf_bool:
-                show_pffromfile(portfolio.df.loc[index, 'vbtpf'])
+                pf = vbt.Portfolio.loads(portfolio.df.loc[index, 'vbtpf'])
+                plot_pf(pf, name=portfolio.df.loc[index, 'name'])
             if morepf_bool:
                 show_PortforlioYearly(portfolio.df.iloc[index, :])
             if updatepf_bool:

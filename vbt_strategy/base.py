@@ -49,11 +49,15 @@ class BaseStrategy(object):
 
     def maxSR(self, param, output_bool=False):
         self.param_dict = param
-        if self.run(output_bool):
-            if output_bool:
-                plot_pf(self.pf)
-            return True
-        else:
+        try:
+            if self.run(output_bool):
+                if output_bool:
+                    plot_pf(self.pf)
+                return True
+            else:
+                return False
+        except Exception as e:
+            print(f"{self._name}-maxSR throws exception: {e}")
             return False
 
     def update(self, param_dict:dict):

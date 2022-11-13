@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import json
 
 import streamlit as st
 import vectorbt as vbt
@@ -10,11 +11,12 @@ import humanize
 from utils.component import  check_password, input_dates
 from utils.dataroma import *
 
-from utils.riskfolio import show_OpMS, show_OpMSC
+from utils.riskfolio import show_OpMS
 from utils.portfolio import Portfolio
 from utils.vbt import get_pfByWeight, get_pfByMaxReturn, plot_pf
+from utils.processing import get_stocks
 
-@st.cache
+@st.cache(allow_output_mutation=True)
 def get_bobmaxsr(symbolsDate_dict:dict, fund_desc:str = ""):
     '''
     get the best of best max sharpe ratio solution
@@ -25,7 +27,7 @@ def get_bobmaxsr(symbolsDate_dict:dict, fund_desc:str = ""):
         "sharpe ratio": 0,
         "pf":   None,
         "strategy name": '',
-        "strategy_param": {},
+        "param_dict": {},
         "savetodb": False
         }
     for strategyname in strategy_list:
@@ -38,41 +40,47 @@ def get_bobmaxsr(symbolsDate_dict:dict, fund_desc:str = ""):
                     max_dict['sharpe ratio'] = sharpe_ratio
                     max_dict['pf'] = strategy.pf
                     max_dict['strategy name'] = strategyname
-                    max_dict['param_dict'] = strategy.param_dict
-    # bobs.append(max_dict)
-    if fund_desc != "":
-        portfolio = Portfolio()
-        if portfolio.add(symbolsDate_dict, max_dict['strategy name'], max_dict['param_dict'], max_dict['pf'], fund_desc):
-            max_dict['savetodb'] = True
-    # limited by the multiprocessing's return error
-    if max_dict['pf'] is not None:
-        max_dict['pf'] = max_dict['pf'].value()
-
+                    max_dict['param_dict'] = strategy.param_dict.copy()
     return max_dict
 
-def cal_beststrategy(market, symbols, start_date, end_date, fund_desc):
-    symbolsDate_dict['market'] = market
-    symbolsDate_dict['symbols'] = symbols
-    symbolsDate_dict['start_date'] = start_date
-    symbolsDate_dict['end_date'] = end_date
-
+def cal_beststrategy(symbolsDate_dict, fund_desc):
     bobs = []
-    # update_bar = st.progress(0)
     info_holder = st.empty()
-    progress_holder = st.empty()
-    i = 0
-    for symbol in symbols:
+    expander_holder = st.expander("Best Strategy of Top 10 Stocks", expanded=True)
+    sd_dict = symbolsDate_dict.copy()
+    portfolio = Portfolio()
+    with expander_holder:
+        col1, col2, col3, col4, col5 = st.columns((1, 1, 1, 6, 1))
+        col1.text('Symbol')  
+        col2.text('Sharpe Ratio')
+        col3.text('Strategy')
+        col4.text('Parameters')
+    for symbol in symbolsDate_dict['symbols']:
         info_holder.write(f"Calculate symbol('{symbol}')")
-        progress_holder.progress(i / (len(symbols)-1))
-        symbolsDate_dict['symbols'] = [symbol]
-        bobs.append(get_bobmaxsr(symbolsDate_dict.copy(), fund_desc))
-        i+=1
+        sd_dict['symbols'] = [symbol]
+        bob_dict = get_bobmaxsr(sd_dict, fund_desc)
+        bobs.append(bob_dict)
+        with expander_holder:
+            col1, col2, col3, col4, col5 = st.columns((1, 1, 1, 6, 1))
+            col1.text(bob_dict['symbol'])  
+            col2.text(bob_dict['sharpe ratio'])
+            col3.text(bob_dict['strategy name'])
+            col4.text(json.dumps(bob_dict['param_dict']),)
+            button_type = "Save"
+            button_phold = col5.empty()  # create a placeholder
+            do_action = button_phold.button(button_type, key='btn_save_'+symbol)
+            if do_action:
+                if portfolio.add(sd_dict, bob_dict['strategy name'], bob_dict['param_dict'], bob_dict['pf'], fund_desc):
+                    button_phold.write("Saved")
+                else:
+                    button_phold.write('Fail')
 
     info_holder.empty()
-    progress_holder.empty()
+    # expander_holder.expander = False
     return bobs
 
 if check_password():
+    # 1. display selected fund's information
     # List of funds to analyze
     funds_tickers = ["BRK", "MKL", "GFT", "psc", "LMM", "oaklx", "ic", "DJCO", "TGM",
                     "AM", "aq", "oc", "HC", "SAM", "PI", "DA", "BAUPOST", "FS", "GR"]
@@ -105,14 +113,15 @@ if check_password():
             st.write(round(df["Portfolio (%)"].iloc[0:10].sum(),2))
             st.write(round(df["Reported Price Change (%)"].mean(), 2))
 
-    st.dataframe(df[['Stock', 'Portfolio (%)', 'Recent Activity', 'Reported Price', 'CurrentPrice', 'Reported Price Change (%)']]
-                    .style.format({'Portfolio (%)':'{0:,.2f}', 'Reported Price Change (%)':'{0:,.3f}'}), 
+    with st.expander("Portfolio Table"):
+        st.dataframe(df[['Stock', 'Portfolio (%)', 'Recent Activity', 'Reported Price', 'CurrentPrice', 'Reported Price Change (%)']]
+                        .style.format({'Portfolio (%)':'{0:,.2f}', 'Reported Price Change (%)':'{0:,.3f}'})
+                        .background_gradient(cmap='YlGn'), 
                     )
-    fig = px.pie(df.iloc[0:10], values='Portfolio (%)', names='Ticker', title='Top 10 holdings')
-    st.plotly_chart(fig)
-        
+
+
+    # 2.select optimized portfolio strategies.
     start_date, end_date = input_dates()
-    df['Ticker'] = df['Ticker'].apply(lambda x: x.replace('.', '_'))
     symbolsDate_dict={
                     'market':       'US',
                     'symbols':      df.iloc[0:10]['Ticker'].values,
@@ -120,9 +129,26 @@ if check_password():
                     'start_date':   start_date,
                     'end_date':     end_date,
                     }
-    subpage = st.sidebar.radio("Option", ('Max Sharpe Portfolio Weights', 'Max Sharpe Stocks First'))
-    st.subheader(subpage)
-    if subpage == 'Max Sharpe Portfolio Weights':
+    subpage = st.radio("Performance", ('Original Weights', 'Max Sharpe Weights', 'Optimize stocks first, then Maximize total return'), 
+                        label_visibility='hidden', horizontal=True)
+    if subpage == 'Original Weights':
+        st.subheader(subpage)
+        fig = px.pie(df.iloc[0:10], values='Portfolio (%)', names='Ticker', title='Top 10 holdings')
+        st.plotly_chart(fig)
+
+        stock_dfs = get_stocks(symbolsDate_dict)
+        stocks_df = pd.DataFrame()
+        for stock_tuple in stock_dfs:
+            stocks_df[stock_tuple[0]] = stock_tuple[1].close
+        weights = []
+        for symbol in stocks_df.columns:
+            weights.append(df.loc[symbol,'Portfolio (%)'])
+        weights = weights / sum(weights)
+
+        pf = get_pfByWeight(stocks_df, weights)
+        plot_pf(pf, select=False, name=f"{fund_ticker}-Original Weights")
+
+    elif subpage == 'Max Sharpe Weights':
         rms_dict = {
                 'MV': "Standard Deviation",
                 'MAD': "Mean Absolute Deviation",
@@ -138,31 +164,49 @@ if check_password():
                 'EDaR': "Entropic Drawdown at Risk of uncompounded cumulative returns",
                 'UCI': "Ulcer Index of uncompounded cumulative returns",
                 }
-        rm = st.selectbox('Select Risk Measures', rms_dict.keys(), format_func=lambda x: x+' ('+ rms_dict[x]+ ')')
-        show_OpMSC(symbolsDate_dict, rm)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader(subpage)
+        with col2:
+            rm = st.selectbox('Select Risk Measures', rms_dict.keys(), 
+                            format_func=lambda x: x+' ('+ rms_dict[x]+ ')')
+        stock_dfs = get_stocks(symbolsDate_dict)
+        stocks_df = pd.DataFrame()
+        for stock_tuple in stock_dfs:
+            stocks_df[stock_tuple[0]] = stock_tuple[1].close
+
+        show_OpMS(stocks_df, rm, plotname=f"{fund_ticker}-Max Sharpe Weights")
     else:
-        savetodb = st.checkbox("Save to db")
-        desc_str = f"Owned by {fund_ticker} in {fund_data[1]}" if savetodb else ""
-        bobs = cal_beststrategy(symbolsDate_dict['market'],
-                            symbolsDate_dict['symbols'],
-                            symbolsDate_dict['start_date'],
-                            symbolsDate_dict['end_date'],
-                            desc_str,
-                            )
+        st.subheader(subpage)
+        bobs = cal_beststrategy(symbolsDate_dict, f"Owned by {fund_ticker} in {fund_data[1]}")
         returns_df = pd.DataFrame()
+        bobs_df = pd.DataFrame()
         for bob_dict in bobs:
-            returns_df[bob_dict['symbol']] = bob_dict['pf']
-        st.line_chart(returns_df)
-        # show_OpMS(returns_df, rm="MV")
-        st.write("**Original Fund weights' Portfolio of BOBs**")
+            returns_df[bob_dict['symbol']] = bob_dict['pf'].value()
+            bobs_df = bobs_df.append({'symbol': bob_dict['symbol'],
+                                    'strategy name': bob_dict['strategy name'],
+                                    'param_dict': json.dumps(bob_dict['param_dict']),
+                                    'sharpe ratio': bob_dict['sharpe ratio']
+                                    }, ignore_index=True)
+        st.write("**Step 1: Original Fund weights' Portfolio of BOBs**")
         weights = []
         for symbol in returns_df.columns:
             weights.append(df.loc[symbol,'Portfolio (%)'])
         weights = weights / sum(weights)
         pf = get_pfByWeight(returns_df, weights)
-        plot_pf(pf, select=False)
-        st.write("**Max Return Portfolio of BOBs**")
-        pf = get_pfByMaxReturn(returns_df)
-        plot_pf(pf, select=False)
+
+        pie_df = pd.DataFrame({'Ticker':returns_df.columns, 'Weights': weights})
+        st.plotly_chart(
+            px.pie(pie_df, values='Weights', names='Ticker', title="Max Return's Allocation")
+            )
+        plot_pf(pf, select=False, name=f"{fund_ticker}-Top10 Stocks max sharpe -Original Weights")
+
+        st.write("**Step 2: Max Return Portfolio of BOBs**")
+        pf, newWeights = get_pfByMaxReturn(returns_df)
+        pie_df = pd.DataFrame({'Ticker':returns_df.columns, 'Weights': newWeights})
+        st.plotly_chart(
+            px.pie(pie_df, values='Weights', names='Ticker', title="Max Return's Allocation")
+            )
+        plot_pf(pf, select=False, name=f"{fund_ticker}-Top10 Stocks max sharpe -Max return Weights")
 
 

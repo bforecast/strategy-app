@@ -301,6 +301,17 @@ class AKData(object):
                     stock_df = stock_df['pegttm']
         return stock_df
 
+def get_stocks(symbolsDate_dict:dict):
+    datas = AKData(symbolsDate_dict['market'])
+    stock_dfs = []
+    for symbol in symbolsDate_dict['symbols']:
+        if symbol!='':
+                stock_df = datas.get_stock(symbol, symbolsDate_dict['start_date'], symbolsDate_dict['end_date'])
+                if stock_df.empty:
+                    st.warning(f"Warning: stock '{symbol}' is invalid or missing. Ignore it", icon= "⚠️")
+                else:
+                    stock_dfs.append((symbol, stock_df))
+    return stock_dfs
 
 @st.cache(allow_output_mutation=True, ttl = 86400)
 def get_arkholdings(fund:str, end_date:str) -> pd.DataFrame:

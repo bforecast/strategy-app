@@ -8,8 +8,7 @@ import os
 
 import config
 import warnings
-
-import streamlit as st
+import vectorbt as vbt
 
 from utils.db import init_connection
 
@@ -184,6 +183,28 @@ class Portfolio(object):
                 print(f"Fail to update portfolio('{self.df.loc[i, 'name']}')")
                 return False
             else:
-                st.success(f"Update portfolio('{self.df.loc[i,'name']}') successfully.")
+                print (f"Update portfolio('{self.df.loc[i,'name']}') successfully.")
         
         return True
+
+    def check_records(self, dt:date) ->pd.DataFrame:
+        result_df = pd.DataFrame()
+        for i in range(len(self.df)):
+            pf = vbt.Portfolio.loads(self.df.loc[i,'vbtpf'])
+            records_df = pf.orders.records_readable.sort_values(by=['Timestamp'])
+            records_df['date'] = records_df['Timestamp'].dt.date
+            records_df = records_df[records_df['date']==dt]
+            if len(records_df) > 0:
+                records = []
+                for index, row in records_df.iterrows():
+                    symbol_str = self.df.loc[i,'symbols']
+                    if type(row['Column']) == tuple:
+                        symbol_str = row['Column'][-1]
+                    records.append(row['Side'] + ' ' + symbol_str)
+                result_df = result_df.append({"name": self.df.loc[i,'name'],
+                                "records": ', '.join(records)}, ignore_index=True)
+        return result_df
+
+    def get(self, strategyname:str) ->pd.DataFrame:
+        result_df = self.df[self.df['name']==strategyname]
+        return result_df

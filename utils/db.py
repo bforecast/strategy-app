@@ -1,27 +1,19 @@
 from distutils.log import error
 import pandas as pd
-# import psycopg2
-# from psycopg2.extras import DictCursor
 import warnings
 import sqlite3
 
-import streamlit as st
+from functools import cache
 
 warnings.filterwarnings('ignore')
 
+DBNAME = "db/portfolio.db" 
 
-# Uses st.experimental_singleton to only run once.
-@st.experimental_singleton
+@cache
 def init_connection():
     try:
-        if st.secrets['database'] == 'sqlite3':
-            connection = sqlite3.connect(st.secrets['sqlite3']['dbname'], check_same_thread=False)
-            cursor = connection.cursor()
-        # elif st.secrets['database'] == 'postgres':
-        #     connection = psycopg2.connect(**st.secrets["postgres"])
-        #     cursor = connection.cursor(cursor_factory=DictCursor)
-        else:
-            raise error
+        connection = sqlite3.connect(DBNAME, check_same_thread=False)
+        cursor = connection.cursor()
         return connection, cursor
     except Exception  as e:
         print("Connnecting Database Error:", e)
@@ -30,7 +22,7 @@ def init_connection():
 # Initialize connection.
 connection, cursor = init_connection()
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@cache
 def load_symbols():
         # cursor.execute("SELECT strategy_id, symbol, exchange, name FROM strategy_stock \
         #                     JOIN stock ON stock.id = strategy_stock.stock_id")
@@ -38,7 +30,7 @@ def load_symbols():
         result_df = pd.read_sql("SELECT * FROM stock", connection)
         return result_df
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@cache
 def load_symbol(symbol:str):
         # cursor.execute("SELECT strategy_id, symbol, exchange, name FROM strategy_stock \
         #                     JOIN stock ON stock.id = strategy_stock.stock_id")
@@ -48,9 +40,10 @@ def load_symbol(symbol:str):
             return result_df
 
         except Exception as e:
-            st.error(f"Connnecting Database Error: {e}")
+            print(f"Connnecting Database Error: {e}")
             return None
 
+@cache
 def get_symbolname(symbol:str):
         # cursor.execute("SELECT strategy_id, symbol, exchange, name FROM strategy_stock \
         #                     JOIN stock ON stock.id = strategy_stock.stock_id")
@@ -60,5 +53,5 @@ def get_symbolname(symbol:str):
             return result_df.loc[0, 'name']
 
         except Exception as e:
-            st.error(f"Connnecting Database Error: {e}")
+            print(f"Connnecting Database Error: {e}")
             return None

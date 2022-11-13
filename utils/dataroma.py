@@ -63,13 +63,13 @@ def getData(holding_ticker):
 
     # Ticker and name of the stock are inside the same columns, we are going to slit it into 2 different columns
     df["Ticker"] = df["Stock"].apply(lambda x: x.split(" - ")[0])
-    df.index = df["Stock"].apply(lambda x: x.split(" - ")[0])
+    df['Ticker'] = df['Ticker'].apply(lambda x: x.replace('.', '_'))
+    df.index = df['Ticker']
     df["Stock"] = df["Stock"].apply(lambda x: x.split(" - ")[1])
 
     # We move "Ticker" column to the front
     col = df.pop("Ticker")
     df.insert(0, col.name, col)
-
     return [name, period, portfolio_date, df]
 
 

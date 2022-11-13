@@ -5,6 +5,7 @@ import io
 import streamlit as st
 import vectorbt as vbt
 import plotly.express as px
+import plotly.io as pio
 
 from vectorbt.portfolio.base import Portfolio
 
@@ -38,36 +39,52 @@ def show_pffromfile(vbtpf):
     pf = vbt.Portfolio.loads(vbtpf)
     plot_pf(pf)
 
-def plot_pf(pf, select=True):
+def plot_pf(pf, name= "", select=True):
+    # 1.initialize
     vbt.settings.array_wrapper['freq'] = 'days'
     vbt.settings.returns['year_freq'] = '252 days'
     vbt.settings.portfolio.stats['incl_unrealized'] = True
+    
+    #buffer to save the html contents
+    buffer = io.StringIO()
+    buffer.write(f"<h2>'{name}' Strategy-App Report</h2><br>")
+
+    # 2.plot the pf
     subplots = ['cum_returns','orders', 'trade_pnl', 'drawdowns']
-    buffer = None
     if select:
         subplots = st.multiselect("Select subplots:", Portfolio.subplots.keys(),
                     ['cum_returns','orders', 'trade_pnl', 'drawdowns'], key='multiselect_'+str(pf.total_return()))
     if len(subplots) > 0:
         fig = pf.plot(subplots=subplots, )
         st.plotly_chart(fig)
+        #save fig to the buffer
+        buffer.write("<h4>Portfolio PLot</h2>")
+        fig.write_html(buffer, include_plotlyjs='cdn')
 
-        # Create an in-memory buffer
-        buffer = io.BytesIO()
-        # Save the figure as a pdf to the buffer
-        fig.write_image(file=buffer, format="pdf")
-        # Download the pdf from the buffer
-        st.download_button(
-            label="Download",
-            data=buffer,
-            file_name="portfolio.pdf",
-            mime="application/pdf",
-        )
-        
+    # 3.display the stats and recodes
     tab1, tab2 = st.tabs(["Return's stats", "Orders' records"])
     with tab1:
         st.text(pf.returns_stats()) 
     with tab2:
         st.text(pf.orders.records_readable.sort_values(by=['Timestamp'])) 
+
+    # 4. save the stats and records to the html, and download    
+    buffer.write("<style>table {text-align: right;}table thead th {text-align: center;}</style>")
+    buffer.write("<br><h4>Return's Statistics</h4>")
+    stats = pf.returns_stats()
+    df = pd.DataFrame({'Items': stats.index, 'Values': stats.values})
+    df.to_html(buf=buffer, float_format='{:10.2f}'.format, index=False, border=1)
+    buffer.write("<br><h4>Order's Records</h4>")
+    pf.orders.records_readable.sort_values(by=['Timestamp']).to_html(buf=buffer, index=False, float_format='{:10.2f}'.format, border=1)
+    buffer.write("<br><footer>Copyright (c) 2022 Brilliant Forecast Ltd. All rights reserved.</footer>")
+
+    html_bytes = buffer.getvalue().encode()
+    st.download_button(
+            label='Download Report',
+            data=html_bytes,
+            file_name=f'{name}-Report.html',
+            mime='text/html'
+        )
 
 def plot_cum_returns(df, title):
     df = df.cumsum()
@@ -156,24 +173,23 @@ def get_pfByMaxReturn(prices):
         ) # all weights sum to 1, no shorting, and 100% investment in risky assets
 
     # Plot annualized return against volatility, color by sharpe ratio
-    annualized_return = pfs.annualized_return()
-    annualized_return.index = pfs.annualized_volatility()
-    st.plotly_chart(annualized_return.vbt.scatterplot(
-                    trace_kwargs=dict(
-                        mode='markers', 
-                        marker=dict(
-                            color=pfs.sharpe_ratio(),
-                            colorbar=dict(
-                                title='sharpe_ratio'
-                            ),
-                            size=5,
-                            opacity=0.7
-                        )
-                    ),
-                    xaxis_title='annualized_volatility',
-                    yaxis_title='annualized_return'
-                )
-            )
+    # annualized_return = pfs.annualized_return()
+    # annualized_return.index = pfs.annualized_volatility()
+    # st.plotly_chart(annualized_return.vbt.scatterplot(
+    #                 trace_kwargs=dict(
+    #                     mode='markers', 
+    #                     marker=dict(
+    #                         color=pfs.sharpe_ratio(),
+    #                         colorbar=dict(
+    #                             title='sharpe_ratio'
+    #                         ),
+    #                         size=5,
+    #                         opacity=0.7
+    #                     )
+    #                 ),
+    #                 xaxis_title='annualized_volatility',
+    #                 yaxis_title='annualized_return'
+    #             )
+    #         )
     idxmax = (pfs.total_return().idxmax())
-    pf = pfs[idxmax]
-    return pf
+    return pfs[idxmax], weights[idxmax]
