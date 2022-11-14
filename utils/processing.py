@@ -95,7 +95,7 @@ def get_hk_stock(symbol:str, start_date:str, end_date:str) -> pd.DataFrame:
 
 
 @st.cache(allow_output_mutation=True, ttl = 86400)
-def get_cn_index(symbol:st, start_date:str, end_date:str) -> pd.DataFrame:
+def get_cn_index(symbol:str, start_date:str, end_date:str) -> pd.DataFrame:
     """get chinese stock data历史行情数据-东方财富
 
     Args:
@@ -112,7 +112,7 @@ def get_cn_index(symbol:st, start_date:str, end_date:str) -> pd.DataFrame:
     return result_df
 
 @st.cache(allow_output_mutation=True, ttl = 86400)
-def get_cn_fund_etf(symbol:st, start_date:str, end_date:str) -> pd.DataFrame:
+def get_cn_fund_etf(symbol:str, start_date:str, end_date:str) -> pd.DataFrame:
     """get chinese fund etf data新浪财经-基金行情的日频率行情数据
     Args:
         ak_params symbol:str, start_date:str 20170301, end_date:str
@@ -130,7 +130,7 @@ def get_cn_fund_etf(symbol:st, start_date:str, end_date:str) -> pd.DataFrame:
     return result_df
 
 @st.cache(allow_output_mutation=True, ttl = 86400)
-def get_cn_fundamental(symbol:st) -> pd.DataFrame:
+def get_cn_fundamental(symbol:str) -> pd.DataFrame:
     """get chinese stock pe data乐咕乐股-A 股个股指标: 市盈率, 市净率, 股息率
 
     Args:
@@ -151,7 +151,7 @@ def get_cn_fundamental(symbol:st) -> pd.DataFrame:
     return result_df
 
 @st.cache(allow_output_mutation=True, ttl = 86400)
-def get_cn_valuation(symbol:st, indicator:str) -> pd.DataFrame:
+def get_cn_valuation(symbol:str, indicator:str) -> pd.DataFrame:
     """get 百度股市通- A 股-财务报表-估值数据
         目标地址: https://gushitong.baidu.com/stock/ab-002044
         限量: 单次获取指定 symbol 和 indicator 的所有历史数据
@@ -166,7 +166,7 @@ def get_cn_valuation(symbol:st, indicator:str) -> pd.DataFrame:
     return result_df
 
 @st.cache(allow_output_mutation=True, ttl = 86400)
-def get_hk_valuation(symbol:st, indicator:str) -> pd.DataFrame:
+def get_hk_valuation(symbol:str, indicator:str) -> pd.DataFrame:
     """get 百度股市通- 港股-财务报表-估值数据
         目标地址: https://gushitong.baidu.com/stock/hk-06969
         限量: 单次获取指定 symbol 和 indicator 的所有历史数据
