@@ -64,10 +64,13 @@ class BaseStrategy(object):
         """
             update the strategy with the param dictiorary saved in portfolio
         """
-        self.param_dict = {}
-        for k, v in param_dict.items():
-            self.param_dict[k] = [v]
+        if len(self.stock_dfs) == 0:
+            return None
+        else:
+            self.param_dict = {}
+            for k, v in param_dict.items():
+                self.param_dict[k] = [v]
 
-        self.run()
-        return self.pf
-        
+            self.run()
+            return self.pf
+            
