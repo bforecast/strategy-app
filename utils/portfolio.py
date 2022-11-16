@@ -190,7 +190,7 @@ class Portfolio(object):
         for i in range(len(self.df)):
             if not self.update(self.df.loc[i, 'id']):
                 print(f"Fail to update portfolio('{self.df.loc[i, 'name']}')")
-                return False
+                continue
             else:
                 print (f"Update portfolio('{self.df.loc[i,'name']}') successfully.")
         
