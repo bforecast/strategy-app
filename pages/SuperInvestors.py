@@ -79,7 +79,7 @@ def cal_beststrategy(symbolsDate_dict, fund_desc):
     # expander_holder.expander = False
     return bobs
 
-if check_password():
+def main():
     # 1. display selected fund's information
     # List of funds to analyze
     funds_tickers = ["BRK", "MKL", "GFT", "psc", "LMM", "oaklx", "ic", "DJCO", "TGM",
@@ -91,7 +91,12 @@ if check_password():
     # selected_df = show_siTable(si_df)
     # if show_siTable(si_df):
     #     fund_ticker = selected_df.loc[0, 'ticker']
-    fund_data = getData(fund_ticker)
+    try:
+        fund_data = getData(fund_ticker)
+    except ValueError as ve:
+        st.write(f"dataroma-getData error: {ve}")
+        return
+        
     # Fund positions
     df = fund_data[-1]
     st.subheader(fund_data[0])
@@ -209,4 +214,5 @@ if check_password():
             )
         plot_pf(pf, select=False, name=f"{fund_ticker}-Top10 Stocks max sharpe -Max return Weights")
 
-
+if check_password():
+    main()

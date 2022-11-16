@@ -1,13 +1,15 @@
 import datetime, pytz
 import requests
 import pandas as pd
+from functools import lru_cache
+
 import akshare as ak
 import streamlit as st
 import vectorbt as vbt
 
 from utils.db import load_symbol
 
-@st.cache(allow_output_mutation=True, ttl = 864000)
+@lru_cache
 def get_us_symbol() -> dict:
     assets_df = ak.stock_us_spot_em()
     symbol_dict = {}
@@ -16,7 +18,7 @@ def get_us_symbol() -> dict:
         symbol_dict[symbol] = row['代码']
     return symbol_dict   
 
-@st.cache(allow_output_mutation=True, ttl = 864000)
+@lru_cache
 def get_cn_symbol() -> dict:
     assets_df = ak.stock_zh_a_spot_em()
     symbol_dict = {}
@@ -25,7 +27,7 @@ def get_cn_symbol() -> dict:
         symbol_dict[symbol] = symbol
     return symbol_dict
 
-@st.cache(allow_output_mutation=True, ttl = 864000)
+@lru_cache
 def get_cnindex_symbol() -> dict:
     assets_df = ak.stock_zh_index_spot()
     symbol_dict = {}
@@ -34,7 +36,7 @@ def get_cnindex_symbol() -> dict:
         symbol_dict[symbol] = row['代码']
     return symbol_dict  
 
-@st.cache(allow_output_mutation=True, ttl = 864000)
+@lru_cache
 def get_hk_symbol() -> dict:
     assets_df = ak.stock_hk_spot_em()
     symbol_dict = {}
@@ -43,7 +45,7 @@ def get_hk_symbol() -> dict:
         symbol_dict[symbol] = row['代码']
     return symbol_dict      
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@lru_cache
 def get_us_stock(symbol:str, start_date:str, end_date:str) -> pd.DataFrame:
     """get us stock data
 
@@ -55,7 +57,7 @@ def get_us_stock(symbol:str, start_date:str, end_date:str) -> pd.DataFrame:
     """
     return ak.stock_us_hist(symbol=symbol, start_date=start_date, end_date=end_date, adjust="qfq")
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@lru_cache
 def get_cn_stock(symbol:str, start_date:str, end_date:str) -> pd.DataFrame:
     """get chinese stock data
 
@@ -67,7 +69,7 @@ def get_cn_stock(symbol:str, start_date:str, end_date:str) -> pd.DataFrame:
     """
     return ak.stock_zh_a_hist(symbol=symbol, start_date=start_date, end_date=end_date, adjust="qfq")
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@lru_cache
 def get_cnindex_stock(symbol:str, start_date:str, end_date:str) -> pd.DataFrame:
     """get chinese stock data东方财富网-中国股票指数-行情数据
         symbol="399282"; 指数代码，此处不用市场标识
@@ -81,7 +83,7 @@ def get_cnindex_stock(symbol:str, start_date:str, end_date:str) -> pd.DataFrame:
     return ak.index_zh_a_hist(symbol=symbol, start_date=start_date, end_date=end_date, adjust="qfq")
 
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@lru_cache
 def get_hk_stock(symbol:str, start_date:str, end_date:str) -> pd.DataFrame:
     """get chinese stock data
 
@@ -94,7 +96,7 @@ def get_hk_stock(symbol:str, start_date:str, end_date:str) -> pd.DataFrame:
     return ak.stock_hk_hist(symbol=symbol, start_date=start_date, end_date=end_date, adjust="qfq")
 
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@lru_cache
 def get_cn_index(symbol:str, start_date:str, end_date:str) -> pd.DataFrame:
     """get chinese stock data历史行情数据-东方财富
 
@@ -111,7 +113,7 @@ def get_cn_index(symbol:str, start_date:str, end_date:str) -> pd.DataFrame:
     result_df = result_df[(result_df['date'] >= start_date) & (result_df['date'] <= end_date)]
     return result_df
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@lru_cache
 def get_cn_fund_etf(symbol:str, start_date:str, end_date:str) -> pd.DataFrame:
     """get chinese fund etf data新浪财经-基金行情的日频率行情数据
     Args:
@@ -129,7 +131,7 @@ def get_cn_fund_etf(symbol:str, start_date:str, end_date:str) -> pd.DataFrame:
     result_df = result_df[(result_df['date'] >= start_date) & (result_df['date'] <= end_date)]
     return result_df
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@lru_cache
 def get_cn_fundamental(symbol:str) -> pd.DataFrame:
     """get chinese stock pe data乐咕乐股-A 股个股指标: 市盈率, 市净率, 股息率
 
@@ -150,7 +152,7 @@ def get_cn_fundamental(symbol:str) -> pd.DataFrame:
     result_df.rename(columns={'trade_date': 'date'}, inplace=True)
     return result_df
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@lru_cache
 def get_cn_valuation(symbol:str, indicator:str) -> pd.DataFrame:
     """get 百度股市通- A 股-财务报表-估值数据
         目标地址: https://gushitong.baidu.com/stock/ab-002044
@@ -165,7 +167,7 @@ def get_cn_valuation(symbol:str, indicator:str) -> pd.DataFrame:
     result_df = ak.stock_zh_valuation_baidu(symbol, indicator)
     return result_df
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@lru_cache
 def get_hk_valuation(symbol:str, indicator:str) -> pd.DataFrame:
     """get 百度股市通- 港股-财务报表-估值数据
         目标地址: https://gushitong.baidu.com/stock/hk-06969
@@ -180,7 +182,7 @@ def get_hk_valuation(symbol:str, indicator:str) -> pd.DataFrame:
     result_df = ak.stock_hk_valuation_baidu(symbol, indicator)
     return result_df    
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@lru_cache
 def stock_us_valuation_baidu(symbol: str = "AAPL", indicator: str = "总市值") -> pd.DataFrame:
     """
     百度股市通- 美股-财务报表-估值数据
@@ -213,7 +215,7 @@ def stock_us_valuation_baidu(symbol: str = "AAPL", indicator: str = "总市值")
         temp_df["value"] = pd.to_numeric(temp_df["value"])
     return temp_df
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@lru_cache
 def get_us_valuation(symbol:st, indicator:str) -> pd.DataFrame:
     """get 百度股市通- 美股-财务报表-估值数据
         目标地址: https://gushitong.baidu.com/stock/us-AAPL
@@ -317,7 +319,7 @@ def get_stocks(symbolsDate_dict:dict):
                     stock_dfs.append((symbol, stock_df))
     return stock_dfs
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@lru_cache
 def get_arkholdings(fund:str, end_date:str) -> pd.DataFrame:
     """get ARK fund holding companies's weight
     Args:
@@ -333,7 +335,7 @@ def get_arkholdings(fund:str, end_date:str) -> pd.DataFrame:
     return holdings_df[['date', 'ticker', 'company', 'market_value', 'share_price', 'weight']]
 
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@lru_cache
 def get_feargreed(start_date:str) -> pd.DataFrame:
     BASE_URL = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}    

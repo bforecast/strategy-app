@@ -1,6 +1,6 @@
 import pandas as pd
 import pandas
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import pytz
 import json
 import numpy as np
@@ -10,8 +10,7 @@ import config
 import warnings
 import vectorbt as vbt
 
-from utils.db import init_connection
-
+from utils.db import init_connection, get_symbolname
 
 warnings.filterwarnings('ignore')
 # Initialize connection.
@@ -116,13 +115,22 @@ class Portfolio(object):
 
         """
         id = int(id)
-        end_date= date.today()
-        end_date = datetime(year=end_date.year, month=end_date.month, day=end_date.day, tzinfo=pytz.utc)
         market = self.df.loc[self.df['id']==id, 'market'].values[0]
         symbols = self.df.loc[self.df['id']==id, 'symbols'].values[0].split(',')
         strategyname = self.df.loc[self.df['id']==id, 'strategy'].values[0]
         start_date = self.df.loc[self.df['id']==id, 'start_date'].values[0]
         param_dict = self.df.loc[self.df['id']==id, 'param_dict'].values[0]
+        oend_date = pd.to_datetime(self.df.loc[self.df['id']==id, 'end_date'].values[0],  utc=True)
+
+        if  market == 'US':
+            end_date = datetime.now(pytz.timezone('US/Eastern')) - timedelta(hours=9, minutes=30)
+        else:
+            end_date= date.today()
+        end_date = datetime(year=end_date.year, month=end_date.month, day=end_date.day, tzinfo=pytz.utc)
+
+        if oend_date == end_date:
+            print(f"Portfolio_update_{self.df.loc[self.df['id']==id, 'name'].values[0]}: Today has been updated already.")
+            return True
 
         if type(param_dict) == str:
             param_dict = json.loads(param_dict)
@@ -143,7 +151,8 @@ class Portfolio(object):
         pf = strategy.update(param_dict)
         if pf is None:
             return False
-            
+
+        end_date = pf.value().index[-1].strftime("%Y-%m-%d")
         total_return = round(pf.stats('total_return')[0]/100.0, 2)
         lastday_return = round(pf.returns()[-1], 4)
 
@@ -188,6 +197,9 @@ class Portfolio(object):
         return True
 
     def check_records(self, dt:date) ->pd.DataFrame:
+        '''
+        Check all the portfolios which there're transations on dt:date
+        '''
         result_df = pd.DataFrame()
         for i in range(len(self.df)):
           try:
@@ -199,9 +211,9 @@ class Portfolio(object):
                 records = []
                 for index, row in records_df.iterrows():
                     symbol_str = self.df.loc[i,'symbols']
-                    if type(row['Column']) == tuple:
+                    if type(row['Column']) == tuple and type(row['Column'][-1]) == str:
                         symbol_str = row['Column'][-1]
-                    records.append(row['Side'] + ' ' + symbol_str)
+                    records.append(row['Side'] + ' ' + symbol_str + f"({get_symbolname(symbol_str)})")
                 result_df = result_df.append({"name": self.df.loc[i,'name'],
                                 "records": ', '.join(records)}, ignore_index=True)
           except ValueError as ve:

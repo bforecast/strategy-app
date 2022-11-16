@@ -60,8 +60,10 @@ class MyTelegramBot(vbt.TelegramBot):
         if len(check_df) == 0:
             self.send_message(chat_id, "No records")
         else:
+            self.send_message(chat_id, f"Found {len(check_df)} records on {dt}")
+
             for i, row in check_df.iterrows():
-                symbol_str = row['name'] + ' : ' + row['records']
+                symbol_str = str(i+1) + '.' + row['name'] + ' : ' + row['records']
                 self.send_message(chat_id, symbol_str)
 
 

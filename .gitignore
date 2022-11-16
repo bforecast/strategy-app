@@ -3,4 +3,4 @@ __pycache__
 *.ipynb
 try_*
 *.pickle
-
+*.pyc
