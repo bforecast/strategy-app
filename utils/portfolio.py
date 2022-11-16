@@ -16,6 +16,14 @@ warnings.filterwarnings('ignore')
 # Initialize connection.
 connection, cursor = init_connection()
 
+def selectpf_bySymbols(df, symbols:list):
+        ids = set()
+        for i, row in df.iterrows():
+            for s in row['symbols'].split(','):
+                if s in symbols:
+                    ids.add(i)
+        return df.loc[ids,:]
+
 class Portfolio(object):
     """
     manage the database of portforlio, the pf file in directory
@@ -222,6 +230,10 @@ class Portfolio(object):
         
         return result_df
 
-    def get(self, strategyname:str) ->pd.DataFrame:
-        result_df = self.df[self.df['name']==strategyname]
+    def get_byName(self, svalue:str ='MOM_AAPL') ->pd.DataFrame:
+        result_df = self.df[self.df['name']==svalue]
+        return result_df
+
+    def get_bySymbol(self, symbols:list =['AAPL']) ->pd.DataFrame:
+        result_df = selectpf_bySymbols(self.df, symbols)
         return result_df

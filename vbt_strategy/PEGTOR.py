@@ -3,7 +3,6 @@ import pandas as pd
 from datetime import timezone
 from numba import njit
 
-
 import streamlit as st
 import vectorbt as vbt
 
@@ -60,6 +59,7 @@ class PEGTORStrategy(BaseStrategy):
         tor = self.stock_dfs[0][1].turnoverratio
         pegttm = self.datas.get_pegttm(self.stock_dfs[0][0])
         self.start_date = self.start_date.replace(tzinfo=timezone.utc)
+        self.end_date = self.end_date.replace(tzinfo=timezone.utc)
         pegttm = pegttm[self.start_date: self.end_date]
         if len(pegttm) == 0:
             return False

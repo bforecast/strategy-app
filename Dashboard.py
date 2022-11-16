@@ -18,7 +18,7 @@ from streamlit_bokeh_events import streamlit_bokeh_events
 
 from utils.vbt import plot_pf
 from utils.component import check_password, params_selector
-from utils.portfolio import Portfolio
+from utils.portfolio import Portfolio, selectpf_bySymbols
 from vbt_strategy.PairTrade import pairtrade_pfs
 from pages.Strategy import check_params
 from utils.db import get_symbolname
@@ -83,13 +83,13 @@ def show_PortfolioTable(portfolio_df):
         slist.sort()
         return(slist)
     
-    def selectpf_bySymbols(df, symbols:list):
-        ids = set()
-        for i, row in df.iterrows():
-            for s in row['symbols'].split(','):
-                if s in symbols:
-                    ids.add(i)
-        return df.loc[ids,:]
+    # def selectpf_bySymbols(df, symbols:list):
+    #     ids = set()
+    #     for i, row in df.iterrows():
+    #         for s in row['symbols'].split(','):
+    #             if s in symbols:
+    #                 ids.add(i)
+    #     return df.loc[ids,:]
 
     symbols = stringlist_to_set(portfolio_df['symbols'].values)
     if 'symbolsSel' not in st.session_state:
