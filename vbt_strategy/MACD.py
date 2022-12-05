@@ -6,7 +6,7 @@ import streamlit as st
 import vectorbt as vbt
 
 from .base import BaseStrategy
-
+from utils.vbt import plot_Histogram
 
 class MACDStrategy(BaseStrategy):
     '''MACD strategy'''
@@ -36,9 +36,10 @@ class MACDStrategy(BaseStrategy):
         ]
 
     @vbt.cached_method
-    def run(self, output_bool=False):
-        price = self.stock_dfs[0][1].close
-        
+    def run(self, output_bool=False, calledby='add'):
+        close_price = self.stock_dfs[0][1].close
+        open_price = self.stock_dfs[0][1].open
+
         fast_windows = self.param_dict['fast_window']
         slow_windows = self.param_dict['slow_window']
         signal_windows = self.param_dict['signal_window']
@@ -47,7 +48,7 @@ class MACDStrategy(BaseStrategy):
             (product, (product, fast_windows, slow_windows), signal_windows))
         # Run MACD indicator
         macd_ind = vbt.MACD.run(
-                price,
+                close_price,
                 fast_window=fast_windows,
                 slow_window=slow_windows,
                 signal_window=signal_windows,
@@ -63,30 +64,28 @@ class MACDStrategy(BaseStrategy):
         exits = exits.vbt.signals.fshift()
 
         # Build portfolio
-        pf = vbt.Portfolio.from_signals(
-            price, entries, exits, **self.pf_kwargs)
-
-        if len(fast_windows) > 1:
-            if output_bool:
-                # Draw all window combinations as a 3D volume
-                st.plotly_chart(
-                    pf.total_return().vbt.volume(
-                    x_level='macd_fast_window',
-                    y_level='macd_slow_window',
-                    z_level='macd_signal_window',
-                    trace_kwargs=dict(
-                            colorbar=dict(
-                                title='Total return', 
-                                tickformat='%'
-                            )
-                        )
-                    )
-                )
-
-            SRs = pf.sharpe_ratio()
-            idxmax = SRs[SRs != np.inf].idxmax()
-            pf = pf[idxmax]
-            self.param_dict = dict(zip(['fast_window', 'slow_window', 'signal_window'], [int(idxmax[0]), int(idxmax[1]), int(idxmax[2])]))        
+        if self.param_dict['WFO']:
+            entries, exits = self.maxSR_WFO(close_price, entries, exits, 'y', 1)
+            pf = vbt.Portfolio.from_signals(close=close_price,
+                        open = open_price, 
+                        entries = entries, 
+                        exits = exits, 
+                        **self.pf_kwargs)
+            self.param_dict = {'WFO': True}
+        else:
+            pf = vbt.Portfolio.from_signals(close=close_price,
+                        open = open_price, 
+                        entries = entries, 
+                        exits = exits, 
+                        **self.pf_kwargs)
+            if calledby == 'add':
+                SRs = pf.sharpe_ratio()
+                idxmax = SRs[SRs != np.inf].idxmax()
+                if output_bool:
+                    plot_Histogram(close_price, pf, idxmax)
+                pf = pf[idxmax]
+                self.param_dict = dict(zip(['fast_window', 'slow_window', 'signal_window'], [int(idxmax[0]), int(idxmax[1]), int(idxmax[2])]))        
+        
         self.pf = pf
         return True
 

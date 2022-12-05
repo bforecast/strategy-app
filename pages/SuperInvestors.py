@@ -11,7 +11,7 @@ import humanize
 from utils.component import  check_password, input_dates
 from utils.dataroma import *
 
-from utils.riskfolio import show_OpMS
+from utils.riskfolio import get_pfOpMS, FactorExposure, plot_AssetsClusters
 from utils.portfolio import Portfolio
 from utils.vbt import get_pfByWeight, get_pfByMaxReturn, plot_pf
 from utils.processing import get_stocks
@@ -79,6 +79,18 @@ def cal_beststrategy(symbolsDate_dict, fund_desc):
     # expander_holder.expander = False
     return bobs
 
+def show_FactorExposure(symbolsDate_dict, pf, stocks_df):
+    st.write("**因子暴露分析(Factor Exposures)：**")
+    with st.expander("包含动量（MTUM）、质量（QUAL）、规模（SIZE）、低波动（USMV）、价值（VLUE）五个因子"):
+        factors =  ['MTUM', 'QUAL', 'SIZE', 'USMV', 'VLUE']
+        sd_dict = symbolsDate_dict.copy()
+        sd_dict['symbols'] = factors
+        factors_df = get_stocks(sd_dict, 'close')
+        portfolio_df = pf.asset_value().to_frame("Portfolio")
+        main_df = pd.concat([portfolio_df, stocks_df], axis=1)
+        st.table(FactorExposure(main_df, factors_df).style.format("{:.4f}").bar(color=['#ef553b','#00cc96'],align='mid', axis=1))
+        st.line_chart(pd.concat([portfolio_df, factors_df], axis=1))
+
 def main():
     # 1. display selected fund's information
     # List of funds to analyze
@@ -134,26 +146,32 @@ def main():
                     'start_date':   start_date,
                     'end_date':     end_date,
                     }
-    subpage = st.radio("Performance", ('Original Weights', 'Max Sharpe Weights', 'Optimize stocks first, then Maximize total return'), 
-                        label_visibility='hidden', horizontal=True)
+    subpage = st.sidebar.radio("Select Optimized Methods:", ('Original Weights', 'Max Sharpe Weights', 'Optimize stocks first, then Maximize total return'), 
+                                horizontal=True)
     if subpage == 'Original Weights':
+        # 2.1.1 plot Pie chart of Orginial fund porforlio.
         st.subheader(subpage)
         fig = px.pie(df.iloc[0:10], values='Portfolio (%)', names='Ticker', title='Top 10 holdings')
         st.plotly_chart(fig)
 
-        stock_dfs = get_stocks(symbolsDate_dict)
-        stocks_df = pd.DataFrame()
-        for stock_tuple in stock_dfs:
-            stocks_df[stock_tuple[0]] = stock_tuple[1].close
+        # 2.1.2 plot pf chart of Orginial fund porforlio.
+        stocks_df = get_stocks(symbolsDate_dict,'close')
         weights = []
         for symbol in stocks_df.columns:
             weights.append(df.loc[symbol,'Portfolio (%)'])
         weights = weights / sum(weights)
-
         pf = get_pfByWeight(stocks_df, weights)
         plot_pf(pf, select=False, name=f"{fund_ticker}-Original Weights")
 
+        # 2.1.3 calculate the factors effect of Original fund portfolio.
+        show_FactorExposure(symbolsDate_dict, pf, stocks_df)
+        # 2.1.4 calculate the factors effect of Original fund portfolio.
+        st.write("**资产层次聚类(Assets Clusters)：**")
+        with st.expander("The codependence or similarity matrix: pearson; Linkage method of hierarchical clustering: ward"):
+            plot_AssetsClusters(stocks_df)
+            
     elif subpage == 'Max Sharpe Weights':
+        # 2.2.1 calculate the optimized max sharpe ratio's portfolio.
         rms_dict = {
                 'MV': "Standard Deviation",
                 'MAD': "Mean Absolute Deviation",
@@ -175,12 +193,12 @@ def main():
         with col2:
             rm = st.selectbox('Select Risk Measures', rms_dict.keys(), 
                             format_func=lambda x: x+' ('+ rms_dict[x]+ ')')
-        stock_dfs = get_stocks(symbolsDate_dict)
-        stocks_df = pd.DataFrame()
-        for stock_tuple in stock_dfs:
-            stocks_df[stock_tuple[0]] = stock_tuple[1].close
+        stocks_df = get_stocks(symbolsDate_dict, 'close')
+        pf = get_pfOpMS(stocks_df, rm)
+        plot_pf(pf, select=False, name=f"{fund_ticker}-Max Sharpe Weights")
+        # 2.2.2 calculate the factors effect of optimized max sharpe ratio's portfolio.
+        show_FactorExposure(symbolsDate_dict, pf, stocks_df)
 
-        show_OpMS(stocks_df, rm, plotname=f"{fund_ticker}-Max Sharpe Weights")
     else:
         st.subheader(subpage)
         bobs = cal_beststrategy(symbolsDate_dict, f"Owned by {fund_ticker} in {fund_data[1]}")

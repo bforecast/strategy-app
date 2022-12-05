@@ -4,8 +4,7 @@ import io
 
 import streamlit as st
 import vectorbt as vbt
-import plotly.express as px
-import plotly.io as pio
+import plotly.graph_objects as go
 
 from vectorbt.portfolio.base import Portfolio
 
@@ -93,6 +92,24 @@ def plot_cum_returns(df, title):
 	# return fig
     st.line_chart(df)
 
+def plot_Histogram(close_price, pf, idxmax):
+    # st.plotly_chart(pf.total_return().vbt.histplot())
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(x = pf.total_return()*100, name = "return", histnorm='percent'))
+    fig.add_vline(x = pf[idxmax].total_return()*100, line_color = "firebrick", line_dash = 'dash', 
+                annotation_text="Max Sharpe Ratio", annotation_font_color='firebrick')
+    fig.add_vline(x = (close_price[-1]/close_price[0]-1)*100, line_color = "grey", annotation_text="Benchmark", annotation_position="top left")
+    fig.update_layout(
+            title= dict(text="Histogram of Returns", x=0.5, y=0.9), 
+            xaxis_title_text = 'Return', # x轴label设置
+            xaxis_ticksuffix = "%",
+            yaxis_title_text = 'Percentage of Count', # 默认聚合函数count
+            yaxis_ticksuffix = "%",
+            bargroupgap=0.1,         # 组内距离
+            margin=go.layout.Margin(l=10, r=1, b=10)
+        )
+    st.plotly_chart(fig)
+
 def display_pfbrief(strategy):
     pf = strategy.pf
     param_dict = strategy.param_dict
@@ -157,8 +174,6 @@ def get_pfByMaxReturn(prices):
     _prices = prices.vbt.tile(num_tests, keys=pd.Index(np.arange(num_tests), name='symbol_group'))
     _prices = _prices.vbt.stack_index(pd.Index(np.concatenate(weights), name='weights'))
 
-    # print(_prices.columns)
-
     # Define order size
     sizes = np.full_like(_prices, np.nan)
     sizes[0, :] = np.concatenate(weights)  # allocate at first timestamp, do nothing afterwards
@@ -172,24 +187,5 @@ def get_pfByMaxReturn(prices):
             cash_sharing=True
         ) # all weights sum to 1, no shorting, and 100% investment in risky assets
 
-    # Plot annualized return against volatility, color by sharpe ratio
-    # annualized_return = pfs.annualized_return()
-    # annualized_return.index = pfs.annualized_volatility()
-    # st.plotly_chart(annualized_return.vbt.scatterplot(
-    #                 trace_kwargs=dict(
-    #                     mode='markers', 
-    #                     marker=dict(
-    #                         color=pfs.sharpe_ratio(),
-    #                         colorbar=dict(
-    #                             title='sharpe_ratio'
-    #                         ),
-    #                         size=5,
-    #                         opacity=0.7
-    #                     )
-    #                 ),
-    #                 xaxis_title='annualized_volatility',
-    #                 yaxis_title='annualized_return'
-    #             )
-    #         )
     idxmax = (pfs.total_return().idxmax())
     return pfs[idxmax], weights[idxmax]

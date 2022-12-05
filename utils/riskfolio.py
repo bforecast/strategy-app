@@ -81,7 +81,7 @@ def report(
 
     return fig
 
-def show_OpMS(stocks_df, rm="MV", plotname=""):
+def get_pfOpMS(stocks_df, rm="MV"):
     '''
     calculate portfolio Optimized max sharpe ratio
     '''
@@ -121,4 +121,37 @@ def show_OpMS(stocks_df, rm="MV", plotname=""):
     st.plotly_chart(fig)
     # Plot Optimized Portfolio
     pf = get_pfByWeight(stocks_df, weights_df['weights'].values)
-    plot_pf(pf, select=False, name=plotname)
+    return pf
+
+def FactorExposure(main_df:pd.DataFrame, factors_df:pd.DataFrame)-> pd.DataFrame:
+    '''
+        因子ETF代码，这是美国市场的因子ETF基金，使用基金的收益作为因子收益
+        reference:
+            https://www.sohu.com/a/521169688_505915
+    '''
+    #计算因子暴露：
+    step = 'Forward'
+    df = pd.concat([main_df, factors_df], axis=1).dropna()
+    X = df[factors_df.columns].pct_change().dropna()
+    Y = df[main_df.columns].pct_change().dropna()
+    try:
+        loadings = rp.loadings_matrix(X=X, Y=Y, stepwise=step)
+    except Exception as e:
+        print(f"FactorExposure Error:    {e}.")
+        loadings = pd.DataFrame()
+    return loadings
+
+def plot_AssetsClusters(stocks_df):
+    # Plotting Assets Clusters
+    Y = stocks_df.pct_change().dropna()
+    fig, ax = plt.subplots()
+    ax = rp.plot_clusters(returns=Y,
+                      codependence='pearson',
+                      linkage='ward',
+                      k=None,
+                      max_k=10,
+                      leaf_order=True,
+                      dendrogram=True,
+                      #linecolor='tab:purple',
+                      ax=ax)
+    st.pyplot(fig)

@@ -7,6 +7,7 @@ import streamlit as st
 import vectorbt as vbt
 
 from .base import BaseStrategy
+from utils.vbt import plot_Histogram
 
 def ecdf_nb(arr):
     result_arr = np.full_like(arr, np.nan, dtype=np.float_)
@@ -50,7 +51,7 @@ class PEGTORStrategy(BaseStrategy):
         ]
 
     @vbt.cached_method
-    def run(self, output_bool=False):
+    def run(self, output_bool=False, calledby='add'):
         if 'turnoverratio' not in self.stock_dfs[0][1].columns:
             return False
             
@@ -92,30 +93,26 @@ class PEGTORStrategy(BaseStrategy):
 
         entries = ind.entries.vbt.signals.fshift()
         exits = ind.exits.vbt.signals.fshift()
-        pf = vbt.Portfolio.from_signals(
-            close= close_price,
-            open= open_price, 
-            entries= entries, 
-            exits= exits,
-            **self.pf_kwargs
-            )
-        if len(peg_rankHs) > 1:
-            if output_bool:
-                # Draw all window combinations as a 3D volume
-                st.plotly_chart(
-                    pf.total_return().vbt.volume(
-                            x_level='pegtor_peg_rankL',
-                            y_level='pegtor_peg_rankH',
-                            z_level='pegtor_tor_rank'
-                        )
-                    )
-                idxmax = (pf.total_return().idxmax())
 
-            SRs = pf.sharpe_ratio()
-            if len(SRs[SRs != np.inf]) == 0:
-                return False
-            else:
+        if self.param_dict['WFO']:
+            entries, exits = self.maxSR_WFO(close_price, entries, exits, 'y', 1)
+            pf = vbt.Portfolio.from_signals(close=close_price,
+                        open = open_price, 
+                        entries = entries, 
+                        exits = exits, 
+                        **self.pf_kwargs)
+            self.param_dict = {'WFO': True}
+        else:
+            pf = vbt.Portfolio.from_signals(close=close_price,
+                        open = open_price, 
+                        entries = entries, 
+                        exits = exits, 
+                        **self.pf_kwargs)
+            if calledby == 'add':
+                SRs = pf.sharpe_ratio()
                 idxmax = SRs[SRs != np.inf].idxmax()
+                if output_bool:
+                    plot_Histogram(close_price, pf, idxmax)
                 pf = pf[idxmax]
                 self.param_dict = dict(zip(['peg_rankH', 'peg_rankL', 'tor_rank'], [int(idxmax[0]), int(idxmax[1]), int(idxmax[2])]))        
         

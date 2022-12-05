@@ -8,6 +8,8 @@ import streamlit as st
 import vectorbt as vbt
 import talib
 
+from utils.vbt import plot_Histogram
+
 @njit(cache=True)
 def AdxRsi_signal_nb(close, adx, rsi_below, rsi_above):
     entry_signal = np.full(close.shape, False, dtype=np.bool_)
@@ -71,7 +73,7 @@ class ADX_RSIStrategy(BaseStrategy):
     ]
 
     # @vbt.cached_method
-    def run(self, output_bool=False):
+    def run(self, output_bool=False, calledby='add'):
         adx_values = self.param_dict['adx_value']
         rsi_windows = self.param_dict['rsi_window']
         rsi_values = self.param_dict['rsi_value']
@@ -80,7 +82,7 @@ class ADX_RSIStrategy(BaseStrategy):
         open_price =  self.stock_dfs[0][1].open
         high_price = self.stock_dfs[0][1].high
         low_price = self.stock_dfs[0][1].low
-
+        # self.param_dict['WFO']  = False #disable WFO Function
         ind = vbt.IndicatorFactory(
                 class_name = 'AdxRsi',
                 input_names = ['high', 'low', 'close'],
@@ -93,7 +95,7 @@ class ADX_RSIStrategy(BaseStrategy):
                 rsi_value=25
                 )
         res = ind.run(
-                high_price.values, low_price.values, close_price.values, 
+                high_price, low_price, close_price, 
                 adx_values,
                 rsi_windows,
                 rsi_values,
@@ -105,36 +107,31 @@ class ADX_RSIStrategy(BaseStrategy):
         #Don't look into the future
         entries = entries.vbt.signals.fshift()
         exits = exits.vbt.signals.fshift()
-        
-        pf = vbt.Portfolio.from_signals(
+
+        if self.param_dict['WFO']:
+            entries, exits = self.maxSR_WFO(close_price, entries, exits, 'y', 3)
+            pf = vbt.Portfolio.from_signals(
                         close = close_price,
                         open = open_price,
                         entries= entries, 
                         exits = exits,
                         **self.pf_kwargs)
-        
-        if output_bool:
-            # Draw all window combinations as a 3D volume
-            fig = pf.total_return().vbt.volume(
-                x_level= 'adxrsi_adx_value',
-                y_level= 'adxrsi_rsi_value',
-                z_level= 'adxrsi_rsi_window',
-
-                trace_kwargs=dict(
-                    colorbar=dict(
-                        title='Total return', 
-                        tickformat='%'
-                    )
-                )
-            )
-            st.plotly_chart(fig)
-
-        if len(rsi_windows) > 1:
-            SRs = pf.sharpe_ratio()
-            idxmax = SRs[SRs != np.inf].idxmax()
-            pf = pf[idxmax]
-            self.param_dict = dict(zip(['adx_value', 'rsi_window', 'rsi_value'], [int(idxmax[0]), int(idxmax[1]),int(idxmax[2])]))
-        
+            self.param_dict = {'WFO': True}
+        else:        
+            pf = vbt.Portfolio.from_signals(
+                        close = close_price,
+                        open = open_price,
+                        entries= entries, 
+                        exits = exits,
+                        **self.pf_kwargs)
+            if calledby == 'add':
+                SRs = pf.sharpe_ratio()
+                idxmax = SRs[SRs != np.inf].idxmax()
+                if output_bool:
+                    plot_Histogram(close_price, pf, idxmax)
+                pf = pf[idxmax]
+                self.param_dict = dict(zip(['adx_value', 'rsi_window', 'rsi_value'], [int(idxmax[0]), int(idxmax[1]),int(idxmax[2])]))
+       
         self.pf =pf
         return True
 

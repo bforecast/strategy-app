@@ -1,4 +1,3 @@
-from tracemalloc import start
 import pandas as pd
 import numpy as np
 import pytz
@@ -7,9 +6,8 @@ from datetime import datetime, date
 
 import streamlit as st
 
-st.set_page_config(initial_sidebar_state='collapsed',)
+# st.set_page_config(initial_sidebar_state='collapsed',)
 
-# import psycopg2, psycopg2.extras
 import vectorbt as vbt
 
 from bokeh.models import ColumnDataSource, CustomJS, DateFormatter, NumberFormatter
@@ -25,7 +23,7 @@ from utils.db import get_symbolname
 
 import config
 
-def bokehTable(portfolio_df):
+def bokehTable(portfolio_df, update_bokeh=True):
         portfolio_df = portfolio_df[['name', 'annual_return','lastday_return', 'sharpe_ratio', 'total_return', 'maxdrawdown', 'symbols', 'end_date']]
         cds = ColumnDataSource(portfolio_df)
         columns = [
@@ -59,11 +57,11 @@ def bokehTable(portfolio_df):
                     bokeh_plot=table,
                     events="INDEX_SELECT",
                     key="foo",
-                    refresh_on_update=True,
+                    refresh_on_update=update_bokeh,
                     # debounce_time=10,
                     override_height=500
                 )
-        if result and result.get("INDEX_SELECT"):
+        if result and result.get("INDEX_SELECT") and not update_bokeh:
             idata = result.get("INDEX_SELECT")["data"]
             cds_df = cds.to_df()
             for i in idata:
@@ -83,35 +81,33 @@ def show_PortfolioTable(portfolio_df):
         slist.sort()
         return(slist)
     
-    # def selectpf_bySymbols(df, symbols:list):
-    #     ids = set()
-    #     for i, row in df.iterrows():
-    #         for s in row['symbols'].split(','):
-    #             if s in symbols:
-    #                 ids.add(i)
-    #     return df.loc[ids,:]
-
     symbols = stringlist_to_set(portfolio_df['symbols'].values)
     if 'symbolsSel' not in st.session_state:
         st.session_state['symbolsSel'] = symbols
 
-    with st.form(key='selectSymbols_form'):
-        col1, col2 = st.columns([7, 1])
-        with col1:
-            sSel = st.multiselect("Please select symbols:", symbols, 
+    sSel = st.multiselect("Please select symbols:", symbols, 
                                 format_func=lambda x: get_symbolname(x)+x,
                                 help='empty means all')
-        with col2:
-            st.text('')
-            st.text('')
-            if st.form_submit_button("Select"):
-                if len(sSel) > 0:
-                    st.session_state['symbolsSel'] = sSel
-                else:
-                    st.session_state['symbolsSel'] = symbols
+    if st.session_state['symbolsSel'] == sSel:
+        update_bokeh = False
+    else:
+        if len(sSel) > 0:
+            if st.session_state['symbolsSel'] == sSel:
+                update_bokeh = False
+            else:
+                st.session_state['symbolsSel'] = sSel
+                update_bokeh = True
+        else:
+            if st.session_state['symbolsSel'] == symbols:
+                update_bokeh = False
+            else:
+                st.session_state['symbolsSel'] = symbols
+                update_bokeh = True
 
+    update_bokeh = (update_bokeh or st.session_state['update_bokeh'])
     df = selectpf_bySymbols(portfolio_df, st.session_state['symbolsSel'])
-    selectpf = bokehTable(df)
+    selectpf = bokehTable(df, update_bokeh)
+    st.session_state['update_bokeh'] = False
     return(selectpf)
 
 def show_PortforlioDetail(portfolio_df, index):
@@ -185,6 +181,8 @@ def main():
     st.header("Portfolio Board")
     selected_pfs = []
     portfolio = Portfolio()
+    if 'update_bokeh' not in st.session_state:
+        st.session_state['update_bokeh'] = True # update and refresh bokeh table
     selected_pfs = show_PortfolioTable(portfolio.df)
     if len(selected_pfs) > 1:
         ##多portfolio比较
@@ -272,12 +270,15 @@ def main():
                     st.success('Update portfolio Sucessfully.')
                 else:
                     st.error('Fail to update portfolio.')
+                st.session_state['update_bokeh'] = True
                 st.experimental_rerun()
+
             if deletepf_bool:
                 if portfolio.delete(portfolio.df.loc[index, 'id']):
                     st.success('Delete portfolio Sucessfully.')
                 else:
                     st.error('Fail to delete portfolio.')
+                st.session_state['update_bokeh'] = True
                 st.experimental_rerun()
         else:
             selected_pfs = []

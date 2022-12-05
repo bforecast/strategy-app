@@ -7,6 +7,7 @@ import streamlit as st
 import vectorbt as vbt
 
 from .base import BaseStrategy
+from utils.vbt import plot_Histogram
 
 def threeRSIDef(close, window1=14, window2=50, window3=100):
     rsi1 = talib.RSI(close, window1)
@@ -59,7 +60,7 @@ class RSI3Strategy(BaseStrategy):
         ]
 
     @vbt.cached_method
-    def run(self, output_bool=False):
+    def run(self, output_bool=False, calledby='add'):
         close_price = self.stock_dfs[0][1].close
         open_price = self.stock_dfs[0][1].open
         
@@ -73,40 +74,28 @@ class RSI3Strategy(BaseStrategy):
         entries = ind.entries.vbt.signals.fshift()
         exits = ind.exits.vbt.signals.fshift()
 
-        pf = vbt.Portfolio.from_signals(
-            close=close_price, 
-            open=open_price, 
-            entries=entries, 
-            exits=exits,
-            size=100,
-            size_type='value',
-            init_cash='auto',
-            **self.pf_kwargs
-            )
-
-        if len(windows1) > 1:
-            if output_bool:
-                # Draw all window combinations as a 3D volume
-                st.plotly_chart(
-                    pf.total_return().vbt.volume(
-                            x_level='RSI3_window1',
-                            y_level='RSI3_window2',
-                            z_level='RSI3_window3',
-
-                            trace_kwargs=dict(
-                                colorbar=dict(
-                                    title='Total return', 
-                                    tickformat='%'
-                                )
-                            )
-                        )
-                    )
-                idxmax = (pf.total_return().idxmax())
-
-            SRs = pf.sharpe_ratio()
-            idxmax = SRs[SRs != np.inf].idxmax()
-            pf = pf[idxmax]
-            self.param_dict = dict(zip(['window1', 'window2', 'window3'], [int(idxmax[0]), int(idxmax[1]), int(idxmax[2])]))        
+        if self.param_dict['WFO']:
+            entries, exits = self.maxSR_WFO(close_price, entries, exits, 'y', 1)
+            pf = vbt.Portfolio.from_signals(close=close_price,
+                        open = open_price, 
+                        entries = entries, 
+                        exits = exits, 
+                        **self.pf_kwargs)
+            self.param_dict = {'WFO': True}
+        else:
+            pf = vbt.Portfolio.from_signals(close=close_price,
+                        open = open_price, 
+                        entries = entries, 
+                        exits = exits, 
+                        **self.pf_kwargs)
+            if calledby == 'add':
+                SRs = pf.sharpe_ratio()
+                idxmax = SRs[SRs != np.inf].idxmax()
+                if output_bool:
+                    plot_Histogram(close_price, pf, idxmax)
+                pf = pf[idxmax]
+                self.param_dict = dict(zip(['window1', 'window2', 'window3'], [int(idxmax[0]), int(idxmax[1]), int(idxmax[2])]))        
+        
         self.pf = pf
         return True
    

@@ -4,8 +4,8 @@ from numba import njit
 import streamlit as st
 import vectorbt as vbt
 
-from utils.vbt import plot_pf
 from .base import BaseStrategy
+from utils.vbt import plot_Histogram
 
 
 @njit
@@ -61,45 +61,40 @@ class MOMStrategy(BaseStrategy):
     ]
 
     @vbt.cached_method
-    def run(self, output_bool=False):
+    def run(self, output_bool=False, calledby='add'):
         windows = self.param_dict['window']
         uppers = self.param_dict['upper']
         lowers = self.param_dict['lower']
-        close = self.stock_dfs[0][1].close
-        open = self.stock_dfs[0][1].open
-        symbol = self.stock_dfs[0][0]
+        close_price = self.stock_dfs[0][1].close
+        open_price = self.stock_dfs[0][1].open
 
-        mom_indicator = get_MomInd().run(close, window=windows, lower=lowers, upper=uppers,\
+        mom_indicator = get_MomInd().run(close_price, window=windows, lower=lowers, upper=uppers,\
             param_product=True)
           
         entries = mom_indicator.entry_signal.vbt.signals.fshift()
         exits = mom_indicator.exit_signal.vbt.signals.fshift()
-        pf = vbt.Portfolio.from_signals(close=close,
-                        open = open, 
+
+        if self.param_dict['WFO']:
+            entries, exits = self.maxSR_WFO(close_price, entries, exits, 'y', 1)
+            pf = vbt.Portfolio.from_signals(close=close_price,
+                        open = open_price, 
                         entries = entries, 
                         exits = exits, 
                         **self.pf_kwargs)
-        if output_bool:
-            # Draw all window combinations as a 3D volume
-            fig = pf.total_return().vbt.volume(
-                x_level='mom_upper',
-                y_level='mom_lower',
-                z_level='mom_window',
+            self.param_dict = {'WFO': True}
+        else:
+            pf = vbt.Portfolio.from_signals(close=close_price,
+                        open = open_price, 
+                        entries = entries, 
+                        exits = exits, 
+                        **self.pf_kwargs)
+            if calledby == 'add':
+                SRs = pf.sharpe_ratio()
+                idxmax = SRs[SRs != np.inf].idxmax()
+                if output_bool:
+                    plot_Histogram(close_price, pf, idxmax)
+                pf = pf[idxmax]
+                self.param_dict = dict(zip(['window', 'lower', 'upper'], [int(idxmax[0]), round(idxmax[1], 4), round(idxmax[2], 4)]))
 
-                trace_kwargs=dict(
-                    colorbar=dict(
-                        title='Total return', 
-                        tickformat='%'
-                    )
-                )
-            )
-            st.plotly_chart(fig)
-
-        if len(windows) > 1:
-            SRs = pf.sharpe_ratio()
-            idxmax = SRs[SRs != np.inf].idxmax()
-            pf = pf[idxmax]
-            self.param_dict = dict(zip(['window', 'lower', 'upper'], [int(idxmax[0]), round(idxmax[1], 4), round(idxmax[2], 4)]))
-        
         self.pf =pf
         return True

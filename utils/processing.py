@@ -249,8 +249,8 @@ class AKData(object):
             
             try:
                 stock_df = eval(func)(symbol=symbol_full, start_date=start_date.strftime("%Y%m%d"), end_date=end_date.strftime("%Y%m%d"))
-            except ValueError as ve:
-                print(f"AKData-get_stock {func} error: {ve}")
+            except Exception as e:
+                print(f"AKData-get_stock {func} error: {e}")
 
             if not stock_df.empty:
                     if len(stock_df.columns) == 6:
@@ -307,17 +307,30 @@ class AKData(object):
                     stock_df = stock_df['pegttm']
         return stock_df
 
-def get_stocks(symbolsDate_dict:dict):
+# def get_stocks(symbolsDate_dict:dict):
+#     datas = AKData(symbolsDate_dict['market'])
+#     stock_dfs = []
+#     for symbol in symbolsDate_dict['symbols']:
+#         if symbol!='':
+#                 stock_df = datas.get_stock(symbol, symbolsDate_dict['start_date'], symbolsDate_dict['end_date'])
+#                 if stock_df.empty:
+#                     st.warning(f"Warning: stock '{symbol}' is invalid or missing. Ignore it", icon= "⚠️")
+#                 else:
+#                     stock_dfs.append((symbol, stock_df))
+#     return stock_dfs
+
+def get_stocks(symbolsDate_dict:dict, column='close'):
     datas = AKData(symbolsDate_dict['market'])
-    stock_dfs = []
+    stocks_df = pd.DataFrame()
     for symbol in symbolsDate_dict['symbols']:
         if symbol!='':
                 stock_df = datas.get_stock(symbol, symbolsDate_dict['start_date'], symbolsDate_dict['end_date'])
                 if stock_df.empty:
                     st.warning(f"Warning: stock '{symbol}' is invalid or missing. Ignore it", icon= "⚠️")
                 else:
-                    stock_dfs.append((symbol, stock_df))
-    return stock_dfs
+                    stocks_df[symbol] = stock_df['close']
+    return stocks_df
+
 
 @lru_cache
 def get_arkholdings(fund:str, end_date:str) -> pd.DataFrame:

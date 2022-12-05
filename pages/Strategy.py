@@ -19,21 +19,22 @@ def get_symbolsname(symbols):
 
 if check_password():
     strategy_list = getattr(__import__(f"vbt_strategy"), 'strategy_list')
-    strategyname = st.sidebar.selectbox("Please select strategy", strategy_list)
-    if strategyname:
+    strategyName = st.sidebar.selectbox("Please select strategy", strategy_list)
+    if strategyName:
         symbolsDate_dict = input_SymbolsDate()
         if len(symbolsDate_dict['symbols']) > 0:
-            st.header(strategyname)
-            strategy_cls = getattr(__import__(f"vbt_strategy"), strategyname + 'Strategy')
+            st.header(strategyName)
+            strategy_cls = getattr(__import__(f"vbt_strategy"), strategyName + 'Strategy')
             strategy = strategy_cls(symbolsDate_dict)
-            st.markdown(strategy.desc, unsafe_allow_html= True)
+            with st.expander("Description:"):
+                st.markdown(strategy.desc, unsafe_allow_html= True)
             if len(strategy.stock_dfs) > 0:
                 st.subheader("Stocks:    " + ' , '.join(get_symbolsname(symbolsDate_dict['symbols'])))
                 params = params_selector(strategy.param_def)
                 if check_params(params):
                     if strategy.maxSR(params, output_bool=True):
                         st.text("Max Sharpe_Ratio's parameters:    " + str(strategy.param_dict))
-                        form_SavePortfolio(symbolsDate_dict, strategyname, strategy.param_dict, strategy.pf)
+                        form_SavePortfolio(symbolsDate_dict, strategyName, strategy.param_dict, strategy.pf)
                     else:
                         st.error("Stocks don't match the Strategy.")
             else:

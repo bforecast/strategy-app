@@ -9,21 +9,21 @@ from utils.portfolio import Portfolio
 
 
 
-def input_symbols():
-    market = st.sidebar.radio("Which Market?", ['US', 'CN', 'HK'])
-    if market == 'US':
-        symbols_string = st.sidebar.text_input("Enter all stock tickers to be included in portfolio separated by commas \
-                                WITHOUT spaces, e.g. 'AMZN,NFLX,GOOG,AAPL'", '').upper()
-        symbols = symbols_string.strip().split(',')
-    elif market == 'CN':
-        symbols_string = st.sidebar.text_input("Enter all stock tickers to be included in portfolio separated by commas \
-                                WITHOUT spaces, e.g. '601318,000001'", '')
-        symbols = symbols_string.strip().split(',')
-    else:
-        symbols_string = st.sidebar.text_input("Enter all stock tickers to be included in portfolio separated by commas \
-                                WITHOUT spaces, e.g. '00700,01171'", '')
-        symbols = symbols_string.strip().split(',')
-    return market, symbols
+# def input_symbols():
+#     market = st.sidebar.radio("Which Market?", ('US', 'CN', 'HK'), horizontal= True)
+#     if market == 'US':
+#         symbols_string = st.sidebar.text_input("Enter all stock tickers to be included in portfolio separated by commas \
+#                                 WITHOUT spaces, e.g. 'AMZN,NFLX,GOOG,AAPL'", '').upper()
+#         symbols = symbols_string.strip().split(',')
+#     elif market == 'CN':
+#         symbols_string = st.sidebar.text_input("Enter all stock tickers to be included in portfolio separated by commas \
+#                                 WITHOUT spaces, e.g. '601318,000001'", '')
+#         symbols = symbols_string.strip().split(',')
+#     else:
+#         symbols_string = st.sidebar.text_input("Enter all stock tickers to be included in portfolio separated by commas \
+#                                 WITHOUT spaces, e.g. '00700,01171'", '')
+#         symbols = symbols_string.strip().split(',')
+#     return market, symbols
 
 def input_dates():
     start_date = st.sidebar.date_input("Start date?", date(2018, 1, 1))
@@ -36,7 +36,7 @@ def form_SavePortfolio(symbolsDate_dict, strategyname:str, strategy_param:dict, 
     with st.expander("Edit description and Save"):
         with st.form("form_" + strategyname):
             # desc_str = st.text_area("Description", value=strategyname)
-            desc_str = st_quill(value= strategyname, html= True)
+            desc_str = st_quill(value= strategyname + ("-WFO" if symbolsDate_dict['WFO'] else ""), html= True)
             submitted = st.form_submit_button("Save")
             if submitted:
                 portfolio = Portfolio()
@@ -116,10 +116,8 @@ def show_bar():
 
 
 def input_SymbolsDate() -> dict:
-    # if "textinput_symbols" in st.session_state:
-    #     st.session_state.textinput_symbols = ''
-
-    market = st.sidebar.radio("Which Market?", ['US', 'CN', 'HK'])
+    WFO = st.sidebar.checkbox("Walk Forward Optimization")
+    market = st.sidebar.radio("Which Market?", ('US', 'CN', 'HK'), horizontal= True)
     if market == 'US':
         symbols_string = st.sidebar.text_input("Enter all stock tickers to be included in portfolio separated by commas \
                                 WITHOUT spaces, e.g. 'AMZN,NFLX,GOOG,AAPL'", '', key="textinput" + "_symbols").upper()
@@ -143,11 +141,12 @@ def input_SymbolsDate() -> dict:
             "symbols":  symbols,
             "start_date": start_date,
             "end_date": end_date,
+            'WFO': WFO
         }
 
 def params_selector(params):
     params_parse = dict()
-    st.write("Optimization Parameters:")
+    # st.write("Optimization Parameters:")
     for param in params:
         col1, col2 = st.columns([3, 1])
         with col1:

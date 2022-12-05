@@ -1,11 +1,12 @@
 import numpy as np
 
 from numba import njit
-import streamlit as st
 import vectorbt as vbt
 
 import talib
+
 from .base import BaseStrategy
+from utils.vbt import plot_Histogram
 
 
 @njit
@@ -55,6 +56,12 @@ def faster_supertrend_talib(high, low, close, window, multiplier):
 class SuperTrendStrategy(BaseStrategy):
     '''SuperTrend strategy'''
     _name = "SuperTrend"
+    desc = "&emsp;SuperTrend是一个趋势跟踪指标，它使用平均真实范围（ATR）和中间价格来定义一组上下带。其理念相当简单：当收盘价越过上限区间时，该资产被认为是进入了上升趋势，因此是一个买入信号。当收盘价低于下限时，该资产被认为已经退出了上升趋势，因此是一个卖出信号。<br> \
+        &emsp;超级趋势指标SuperTrend Indicator的计算公式：<br> \
+        &emsp;在做多时：<br>\
+        &emsp;超级趋势指标SuperTrend =（最高价+最低价）/2 – N*ATR(M)<br> \
+        &emsp;reference: <br>\
+            &emsp;https://medium.datadriveninvestor.com/superfast-supertrend-6269a3af0c2a"
     param_dict = {}
     param_def = [
             {
@@ -74,13 +81,13 @@ class SuperTrendStrategy(BaseStrategy):
     ]
 
     @vbt.cached_method
-    def run(self, output_bool=False):
+    def run(self, output_bool=False, calledby='add'):
         windows = self.param_dict['window']
         multipliers = self.param_dict['multiplier']
-        high = self.stock_dfs[0][1].high
-        low = self.stock_dfs[0][1].low
-        close = self.stock_dfs[0][1].close
-        open = self.stock_dfs[0][1].open
+        high_price = self.stock_dfs[0][1].high
+        low_price = self.stock_dfs[0][1].low
+        close_price = self.stock_dfs[0][1].close
+        open_price = self.stock_dfs[0][1].open
 
         symbol = self.stock_dfs[0][0]
 
@@ -94,34 +101,35 @@ class SuperTrendStrategy(BaseStrategy):
         )
 
         st_indicator = SuperTrend.run(
-                high, low, close, 
+                high_price, low_price, close_price, 
                 window = windows, 
                 multiplier = multipliers,
                 param_product=True,
             )
         entries = (~st_indicator.superl.isnull()).vbt.signals.fshift()
         exits = (~st_indicator.supers.isnull()).vbt.signals.fshift()
-        pf = vbt.Portfolio.from_signals(
-                    close=close, 
-                    open=open, 
-                    entries=entries, 
-                    exits=exits, 
-                    **self.pf_kwargs
-                )
-        
-        if output_bool:
-            # Draw all window combinations as a 2D volume
-            fig = pf.total_return().vbt.heatmap(
-                        x_level='supertrend_window', 
-                        y_level='supertrend_multiplier',
-                    )
-            st.plotly_chart(fig)
 
-        if len(windows) > 1:
-            SRs = pf.sharpe_ratio()
-            idxmax = SRs[SRs != np.inf].idxmax()
-            pf = pf[idxmax]
-            self.param_dict = dict(zip(['window', 'multiplier'], [int(idxmax[0]), round(idxmax[1], 1)]))
+        if self.param_dict['WFO']:
+            entries, exits = self.maxSR_WFO(close_price, entries, exits, 'y', 1)
+            pf = vbt.Portfolio.from_signals(close=close_price,
+                        open = open_price, 
+                        entries = entries, 
+                        exits = exits, 
+                        **self.pf_kwargs)
+            self.param_dict = {'WFO': True}
+        else:
+            pf = vbt.Portfolio.from_signals(close=close_price,
+                        open = open_price, 
+                        entries = entries, 
+                        exits = exits, 
+                        **self.pf_kwargs)
+            if calledby == 'add':
+                SRs = pf.sharpe_ratio()
+                idxmax = SRs[SRs != np.inf].idxmax()
+                if output_bool:
+                    plot_Histogram(close_price, pf, idxmax)
+                pf = pf[idxmax]
+                self.param_dict = dict(zip(['window', 'multiplier'], [int(idxmax[0]), round(idxmax[1], 1)]))
         
         self.pf =pf
         return True

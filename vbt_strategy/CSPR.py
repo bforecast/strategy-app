@@ -3,10 +3,10 @@ import pandas as pd
 import talib
 from itertools import combinations
 
-import streamlit as st
 import vectorbt as vbt
 
 from .base import BaseStrategy
+from utils.vbt import plot_Histogram
 
 from numba import njit
 @njit
@@ -50,8 +50,10 @@ class CSPR0Strategy(BaseStrategy):
         ]
 
     @vbt.cached_method
-    def run(self, output_bool=False):
+    def run(self, output_bool=False, calledby='add')->bool:
         ohlcv = self.stock_df[0][1]
+        close_price = self.stock_dfs[0][1].close
+        open_price = self.stock_dfs[0][1].open
         uppers = self.param_dict['upper']
         lowers = self.param_dict['lower']
         
@@ -61,35 +63,24 @@ class CSPR0Strategy(BaseStrategy):
             pr = PRecognizer.run(ohlcv['open'], ohlcv['high'], ohlcv['low'], ohlcv['close'])
             prScore = prScore + pr.integer
         
-        #Don't look into the future
-        prScore = prScore.vbt.fshift(1)
-
         ul_indicator = get_ULInd().run(prScore, lower=lowers, upper=uppers,\
                     param_product=True)
         entries = ul_indicator.entry_signal
         exits = ul_indicator.exit_signal
+        #Don't look into the future
+        entries = entries.vbt.signals.fshift()
+        exits = exits.vbt.signals.fshift()
 
-        pf = vbt.Portfolio.from_signals(
-                close=ohlcv['close'], 
-                entries=entries, 
-                exits=exits, 
-                open=ohlcv['open'],
-                **self.pf_kwargs)
-
-        if len(uppers) > 1:
-            if output_bool:
-                # Draw all window combinations as a heatmap
-                st.plotly_chart(
-                    pf.total_return().vbt.heatmap(
-                        x_level='ul_lower', 
-                        y_level='ul_upper',
-                    )
-                )
+        if self.param_dict['WFO']:
+            entries, exits = self.maxSR_WFO(close_price, entries, exits, 'y', 1)
+            pf = vbt.Portfolio.from_signals(close=close_price, open=open_price, entries=entries, exits=exits, **self.pf_kwargs)
+            self.param_dict = {'WFO': True}
+        else:
+            pf = vbt.Portfolio.from_signals(close=close_price, open=open_price, entries=entries, exits=exits, **self.pf_kwargs)
+            if calledby == 'add':
                 idxmax = (pf.total_return().idxmax())
-
-            idxmax = (pf.total_return().idxmax())
-            pf = pf[idxmax]
-            self.param_dict = dict(zip(['lower', 'upper'], [int(idxmax[0]), int(idxmax[1])]))        
+                pf = pf[idxmax]
+                self.param_dict = dict(zip(['lower', 'upper'], [int(idxmax[0]), int(idxmax[1])]))        
         self.pf = pf
    
 class CSPRStrategy(BaseStrategy):
@@ -108,8 +99,11 @@ class CSPRStrategy(BaseStrategy):
             },
         ]
 
-    def run(self, output_bool=False):
-        ohlcv = self.stock_dfs[0][1]
+    def run(self, output_bool=False, calledby='add')->bool:
+        close_price = self.stock_dfs[0][1].close
+        open_price = self.stock_dfs[0][1].open
+        high_price = self.stock_dfs[0][1].high
+        low_price = self.stock_dfs[0][1].low
         patterns = self.param_dict['pattern']
         PR_list = talib.get_function_groups()['Pattern Recognition']
 
@@ -118,11 +112,9 @@ class CSPRStrategy(BaseStrategy):
 
         for idx, pattern in enumerate(PR_list):
             PRecognizer = vbt.IndicatorFactory.from_talib(pattern)
-            pr = PRecognizer.run(ohlcv['open'], ohlcv['high'], ohlcv['low'], ohlcv['close'])
+            pr = PRecognizer.run(open_price, high_price, low_price, close_price)
             prScore = pr.integer
             if (prScore!=0 & pd.isnull(prScore)).sum() > 0:
-            #Don't look into the future
-                prScore = prScore.vbt.fshift(1)
                 prScore_df[str(idx)] = prScore
                 idx_list.append(idx)
 
@@ -140,15 +132,96 @@ class CSPRStrategy(BaseStrategy):
             prScoreCombs = prScore_df.loc[:, list(map(str, comb))].sum(axis= 1)
             entries[comb] = prScoreCombs > 0
             exits[comb] = prScoreCombs < 0
+        #Don't look into the future
+        entries = entries.vbt.signals.fshift()
+        exits = exits.vbt.signals.fshift()
 
-        pf = vbt.Portfolio.from_signals(
-                close=ohlcv['close'], entries=entries, exits=exits, open=ohlcv['open'],
-                fees=0.001, slippage=0.001,freq='1D')
+        if self.param_dict['WFO']:
+            entries, exits = self.maxSR_WFO(close_price, entries, exits, 'y', 1)
+            pf = vbt.Portfolio.from_signals(close=close_price, open=open_price, entries=entries, exits=exits, **self.pf_kwargs)
+            self.param_dict = {'WFO': True}
+        else:
+            pf = vbt.Portfolio.from_signals(close=close_price, open=open_price, entries=entries, exits=exits, **self.pf_kwargs)
+            if  len(pf.total_return()) > 0:
+                SRs = pf.sharpe_ratio()
+                idxmax = SRs[SRs != np.inf].idxmax()
+                if output_bool:
+                    plot_Histogram(close_price, pf, idxmax)
+                pf = pf[idxmax]
+                self.param_dict = {'pattern': ','.join(PR_list[i] for i in idxmax)}
+        self.pf = pf
+        return True
 
-        if len(pf.total_return()) > 0:
-            SRs = pf.sharpe_ratio()
-            idxmax = SRs[SRs != np.inf].idxmax()
-            pf = pf[idxmax]
-            self.param_dict = {'pattern': ','.join(PR_list[i] for i in idxmax)}
+
+class CSPR5Strategy(BaseStrategy):
+    '''CSPR5 strategy
+        The 5 Most Powerful Candlestick Patterns
+    '''
+    _name = "CSPR5"
+    desc = "**The 5 Most Powerful Candlestick Patterns ** <br>   \
+            &emsp; Which candlestick pattern is most reliable? <br>    \
+            &emsp; Many patterns are preferred and deemed the most reliable by different traders. Some of the most popular are: bullish/bearish engulfing lines; bullish/bearish long-legged doji; and bullish/bearish abandoned baby top and bottom. In the meantime, many neutral potential reversal signals—e.g., doji and spinning tops—will appear that should put you on the alert for the next directional move.  \
+            reference: <br>\
+            &emsp; https://www.investopedia.com/articles/active-trading/092315/5-most-powerful-candlestick-patterns.asp"
+    param_def = []
+
+    def run(self, output_bool=False, calledby='add')->bool:
+        close_price = self.stock_dfs[0][1].close
+        open_price = self.stock_dfs[0][1].open
+        high_price = self.stock_dfs[0][1].high
+        low_price = self.stock_dfs[0][1].low
+        if 'pattern' in self.param_dict.keys():
+            patterns = self.param_dict['pattern']
+        else:
+            patterns = []
+        PR_list = ['CDLHAMMER', 'CDLMORNINGSTAR', 'CDL3WHITESOLDIERS', 
+                    'CDLSHOOTINGSTAR', 'CDLEVENINGSTAR',
+                    'CDL3BLACKCROWS', 'CDLENGULFING', 'CDL3OUTSIDE']
+
+        
+        prScore_df = pd.DataFrame()
+        idx_list = []
+
+        for idx, pattern in enumerate(PR_list):
+            PRecognizer = vbt.IndicatorFactory.from_talib(pattern)
+            pr = PRecognizer.run(open_price, high_price, low_price, close_price)
+            prScore = pr.integer
+            if (prScore!=0 & pd.isnull(prScore)).sum() > 0:
+                prScore_df[str(idx)] = prScore
+                idx_list.append(idx)
+        
+        if len(patterns) >0 and type(patterns[0]) == str:
+            # update call
+            prCombs = [tuple(PR_list.index(s) for s in patterns[0].split(','))]
+        else:
+            # maxSR call
+            number = len(PR_list)
+            prCombs = []
+            for n in range(number):
+                prCombs += list(combinations((idx_list), n+1))
+        entries = pd.DataFrame()
+        exits = pd.DataFrame()
+        for comb in prCombs:
+            prScoreCombs = prScore_df.loc[:, list(map(str, comb))].sum(axis= 1)
+            entries[comb] = prScoreCombs > 0
+            exits[comb] = prScoreCombs < 0
+
+        #Don't look into the future
+        entries = entries.vbt.signals.fshift()
+        exits = exits.vbt.signals.fshift()
+
+        if self.param_dict['WFO']:
+            entries, exits = self.maxSR_WFO(close_price, entries, exits, 'y', 1)
+            pf = vbt.Portfolio.from_signals(close=close_price, open=open_price, entries=entries, exits=exits, **self.pf_kwargs)
+            self.param_dict = {'WFO': True}
+        else:
+            pf = vbt.Portfolio.from_signals(close=close_price, open=open_price, entries=entries, exits=exits, **self.pf_kwargs)
+            if len(pf.total_return()) > 0:
+                SRs = pf.sharpe_ratio()
+                idxmax = SRs[SRs != np.inf].idxmax()
+                if output_bool:
+                    plot_Histogram(close_price, pf, idxmax)
+                pf = pf[idxmax]
+                self.param_dict = {'pattern': ','.join(PR_list[i] for i in idxmax)}
         self.pf = pf
         return True

@@ -48,7 +48,8 @@ class Portfolio(object):
         market = symbolsDate_dict['market']
         symbols = symbolsDate_dict['symbols']
         start_date = symbolsDate_dict['start_date']
-        end_date = symbolsDate_dict['end_date']
+        end_date = pf.value().index[-1].strftime("%Y-%m-%d")
+
 
         name = strategyname + '_' + '&'.join(symbols)
         filename = str(datetime.now().timestamp()) + '.pf'
@@ -112,7 +113,7 @@ class Portfolio(object):
             connection.rollback()
             return False
         
-    def update(self, id)->bool:
+    def update(self, id, force:bool = True)->bool:
         """
             update the result of portforlio to today
             input:
@@ -136,7 +137,7 @@ class Portfolio(object):
             end_date= date.today()
         end_date = datetime(year=end_date.year, month=end_date.month, day=end_date.day, tzinfo=pytz.utc)
 
-        if oend_date == end_date:
+        if force is False and oend_date == end_date:
             print(f"Portfolio_update_{self.df.loc[self.df['id']==id, 'name'].values[0]}: Today has been updated already.")
             return True
 
