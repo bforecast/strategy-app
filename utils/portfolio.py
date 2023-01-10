@@ -84,7 +84,7 @@ class Portfolio(object):
                 return False
 
           except Exception  as e:
-            print("...", e)
+            print("Portforlio.add error occurs:", e)
             connection.rollback()
             return False
         self.__init__()

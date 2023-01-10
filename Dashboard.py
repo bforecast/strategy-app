@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import pytz
 from datetime import datetime, date
-
+import json
 
 import streamlit as st
 
@@ -20,6 +20,7 @@ from utils.portfolio import Portfolio, selectpf_bySymbols
 from vbt_strategy.PairTrade import pairtrade_pfs
 from pages.Strategy import check_params
 from utils.db import get_symbolname
+from utils.vbt import display_pfbrief
 
 import config
 
@@ -113,20 +114,8 @@ def show_PortfolioTable(portfolio_df):
 def show_PortforlioDetail(portfolio_df, index):
     if index > -1 and (index in portfolio_df.index):
         st.info('Selected portfolio:    ' + portfolio_df.at[index, 'name'])
-        param_dict = portfolio_df.at[index, 'param_dict']
-
-        cols = st.columns([1, 1, 1, 1, 3])
-        with cols[0]:
-            st.metric('Annualized', "{0:.0%}".format(portfolio_df.at[index, 'annual_return']))
-        with cols[1]:
-            st.metric('Lastday Return', "{0:.1%}".format(portfolio_df.at[index, 'lastday_return']))
-        with cols[2]:
-            st.metric('Sharpe Ratio', '%.2f'% portfolio_df.at[index, 'sharpe_ratio'])
-        with cols[3]:
-            st.metric('Max DD', '{0:.0%}'.format(portfolio_df.at[index, 'maxdrawdown']))
-        with cols[4]:
-            st.markdown("**Parameters**")
-            st.text(param_dict)
+        param_dict = json.loads(portfolio_df.at[index, 'param_dict'])
+        display_pfbrief(pf=vbt.Portfolio.loads(portfolio_df.loc[index, 'vbtpf']), param_dict=param_dict)
         st.markdown("**Description**")
         st.markdown(portfolio_df.at[index, 'description'], unsafe_allow_html=True)
         return True
@@ -271,7 +260,7 @@ def main():
                 else:
                     st.error('Fail to update portfolio.')
                 st.session_state['update_bokeh'] = True
-                st.experimental_rerun()
+                # st.experimental_rerun()
 
             if deletepf_bool:
                 if portfolio.delete(portfolio.df.loc[index, 'id']):

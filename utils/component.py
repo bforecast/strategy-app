@@ -35,8 +35,7 @@ def input_dates():
 def form_SavePortfolio(symbolsDate_dict, strategyname:str, strategy_param:dict, pf):
     with st.expander("Edit description and Save"):
         with st.form("form_" + strategyname):
-            # desc_str = st.text_area("Description", value=strategyname)
-            desc_str = st_quill(value= strategyname + ("-WFO" if symbolsDate_dict['WFO'] else ""), html= True)
+            desc_str = st_quill(value= f"{strategyname},  Param_dict: {strategy_param}", html= True)
             submitted = st.form_submit_button("Save")
             if submitted:
                 portfolio = Portfolio()
@@ -116,7 +115,7 @@ def show_bar():
 
 
 def input_SymbolsDate() -> dict:
-    WFO = st.sidebar.checkbox("Walk Forward Optimization")
+    # WFO = st.sidebar.slider("Walk-Forward Optimization", min_value=0, max_value=60, help="0 means disable")
     market = st.sidebar.radio("Which Market?", ('US', 'CN', 'HK'), horizontal= True)
     if market == 'US':
         symbols_string = st.sidebar.text_input("Enter all stock tickers to be included in portfolio separated by commas \
@@ -141,12 +140,21 @@ def input_SymbolsDate() -> dict:
             "symbols":  symbols,
             "start_date": start_date,
             "end_date": end_date,
-            'WFO': WFO
         }
 
 def params_selector(params):
     params_parse = dict()
-    # st.write("Optimization Parameters:")
+    st.write("**Optimization Parameters:**")
+
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        params_parse['RARM'] = st.selectbox('Risk Adjusted Return Method', 
+                        ['sharpe_ratio', 'annualized_return', 'deflated_sharpe_ratio', 'calmar_ratio', 'sortino_ratio', 
+                         'omega_ratio', 'information_ratio', 'tail_ratio'])
+    with col2:
+        params_parse['WFO'] = st.selectbox("Walk Forward Optimization",
+                        ['None', 'Non-anchored', 'Anchored'])
+
     for param in params:
         col1, col2 = st.columns([3, 1])
         with col1:
@@ -164,7 +172,7 @@ def params_selector(params):
                 values =st.slider("Select a range of " + param["name"],
                                 bottom, param['max'] + gap, (param["min"], param["max"]))
         with col2:
-            step_number = st.number_input("step " + param["name"], value=param["step"])
+            step_number = st.number_input("step of " + param["name"], value=param["step"])
 
         if step_number == 0:
              params_parse[param["name"]] = [values[0]]

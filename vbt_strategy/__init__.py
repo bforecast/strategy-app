@@ -11,8 +11,9 @@ from .PETOR import PETORStrategy
 from .PEGTOR import PEGTORStrategy
 from .ADX_RSI import ADX_RSIStrategy
 from .EMACloud import EMACloudStrategy
+from .HHT import HHTStrategy
 
 
 
-__all__ = ["MOMStrategy", "PairTradeStrategy", "MAStrategy", "RSIStrategy", "MACDStrategy", "MOM_RSIStrategy", "SuperTrendStrategy", "CSPRStrategy", "CSPR5Strategy", "RSI3Strategy", "ADX_RSIStrategy", "PETORStrategy", "PEGTORStrategy", "EMACloudStrategy"]
-strategy_list = ["MA", "MACD", "MOM", "PairTrade", "RSI", "MOM_RSI", "SuperTrend", "CSPR", "CSPR5", "RSI3", "ADX_RSI", "PETOR", "PEGTOR", "EMACloud"]
+__all__ = ["MOMStrategy", "PairTradeStrategy", "MAStrategy", "RSIStrategy", "MACDStrategy", "MOM_RSIStrategy", "SuperTrendStrategy", "CSPRStrategy", "CSPR5Strategy", "RSI3Strategy", "ADX_RSIStrategy", "PETORStrategy", "PEGTORStrategy", "EMACloudStrategy", "HHTStrategy"]
+strategy_list = ["MA", "MACD", "MOM", "PairTrade", "RSI", "MOM_RSI", "SuperTrend", "CSPR", "CSPR5", "RSI3", "ADX_RSI", "PETOR", "PEGTOR", "EMACloud", "HHT"]

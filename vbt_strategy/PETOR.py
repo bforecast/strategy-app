@@ -10,7 +10,6 @@ from .base import BaseStrategy
 from utils.vbt import plot_Histogram
 
 def ecdf_nb(arr):
-    result_arr = np.full_like(arr, np.nan, dtype=np.float_)
     result_arr = arr.copy()
     for i in range(arr.shape[0]):
         result_arr[i] = ((arr <= arr[i]).mean())
@@ -26,6 +25,7 @@ def apply_PETOR_nb(pettm, tor,  pe_rankH, pe_rankL, tor_rank):
 class PETORStrategy(BaseStrategy):
     '''PE_TurnOverRatio strategy'''
     _name = "PETOR"
+    desc = "PE_TurnOverRatio strategy"
     param_def = [
             {
             "name": "pe_rankL",
@@ -50,10 +50,10 @@ class PETORStrategy(BaseStrategy):
         ]
 
     @vbt.cached_method
-    def run(self, output_bool=False, calledby='add'):
+    def run(self, calledby='add'):
+        #1. initialize the variables
         if 'turnoverratio' not in self.stock_dfs[0][1].columns:
             return False
-        
         close_price = self.stock_dfs[0][1].close
         open_price = self.stock_dfs[0][1].open
         tor = self.stock_dfs[0][1].turnoverratio
@@ -67,14 +67,14 @@ class PETORStrategy(BaseStrategy):
         ind_df = pd.DataFrame()
         ind_df['tor'] = tor
         ind_df['pettm'] = pettm
-
+        # calculate the percentage series
         tor_pers = ecdf_nb(ind_df.tor)
         pettm_pers = ecdf_nb(ind_df.pettm)
-
         pe_rankHs = self.param_dict['pe_rankH']
         pe_rankLs = self.param_dict['pe_rankL']
         tor_ranks = self.param_dict['tor_rank']
 
+        #2. calculate the indicators
         petor = vbt.IndicatorFactory(
             class_name = "PETOR",
             input_names = ["pettm", "tor"],
@@ -89,35 +89,33 @@ class PETORStrategy(BaseStrategy):
         ind = petor.run(pettm_pers, tor_pers, pe_rankH=pe_rankHs,  pe_rankL=pe_rankLs, 
                     tor_rank=tor_ranks, param_product=True)
 
+        #3. remove all the name in param_def from param_dict
+        for param in self.param_def:
+            del self.param_dict[param['name']]
+
+        #4. generate the vbt signal
         entries = ind.entries.vbt.signals.fshift()
         exits = ind.exits.vbt.signals.fshift()
 
-        if self.param_dict['WFO']:
-            entries, exits = self.maxSR_WFO(close_price, entries, exits, 'y', 1)
-            pf = vbt.Portfolio.from_signals(close=close_price,
-                        open = open_price, 
-                        entries = entries, 
-                        exits = exits, 
-                        **self.pf_kwargs)
-            self.param_dict = {'WFO': True}
+        #5. Build portfolios
+        if self.param_dict['WFO']!='None':
+            entries, exits = self.maxRARM_WFO(close_price, entries, exits, calledby)
+            pf = vbt.Portfolio.from_signals(close=close_price, open=open_price, entries=entries, exits=exits, **self.pf_kwargs)
         else:
-            pf = vbt.Portfolio.from_signals(close=close_price,
-                        open = open_price, 
-                        entries = entries, 
-                        exits = exits, 
-                        **self.pf_kwargs)
+            pf = vbt.Portfolio.from_signals(close=close_price, open=open_price, entries=entries, exits=exits, **self.pf_kwargs)
             if calledby == 'add':
-                SRs = pf.sharpe_ratio()
-                idxmax = SRs[SRs != np.inf].idxmax()
-                if output_bool:
-                    plot_Histogram(close_price, pf, idxmax)
+                RARMs = eval(f"pf.{self.param_dict['RARM']}()")
+                idxmax = RARMs[RARMs != np.inf].idxmax()
+                if self.output_bool:
+                    plot_Histogram(pf, idxmax, f"Maximize {self.param_dict['RARM']}")
                 pf = pf[idxmax]
-                self.param_dict = dict(zip(['pe_rankH', 'pe_rankL', 'tor_rank'], [int(idxmax[0]), int(idxmax[1]), int(idxmax[2])]))        
+
+                self.param_dict.update(dict(zip(['pe_rankH', 'pe_rankL', 'tor_rank'], [int(idxmax[0]), int(idxmax[1]), int(idxmax[2])])))
         
-        if output_bool:
-            fig = tor_pers.vbt.plot(yaxis_title="Total Return Ratio")
-            fig = pettm_pers.vbt.plot(yaxis_title="Rank Percentage", fig=fig)
-            st.plotly_chart(fig)
+        if self.output_bool:
+            fig = tor_pers.vbt.plot(yaxis_title="Total Return Ratio", yaxis_tickformat="%")
+            fig = pettm_pers.vbt.plot(yaxis_title="Rank Percentage", yaxis_tickformat=".0%", fig=fig)
+            st.plotly_chart(fig, use_container_width=True)
         
         self.pf = pf
         return True

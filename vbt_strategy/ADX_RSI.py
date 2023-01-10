@@ -54,35 +54,36 @@ class ADX_RSIStrategy(BaseStrategy):
             "type": "int",
             "min":  20,
             "max":  30,
-            "step": 1   
+            "step": 2   
             },
             {
             "name": "rsi_window",
             "type": "int",
             "min":  10,
             "max":  20,
-            "step": 1   
+            "step": 2   
             },
             {
             "name": "rsi_value",
             "type": "int",
             "min":  20,
             "max":  30,
-            "step": 1   
+            "step": 2   
             },            
     ]
 
-    # @vbt.cached_method
-    def run(self, output_bool=False, calledby='add'):
-        adx_values = self.param_dict['adx_value']
-        rsi_windows = self.param_dict['rsi_window']
-        rsi_values = self.param_dict['rsi_value']
-
+    @vbt.cached_method
+    def run(self, calledby='add')->bool:
+        #1. initialize the variables
         close_price = self.stock_dfs[0][1].close
         open_price =  self.stock_dfs[0][1].open
         high_price = self.stock_dfs[0][1].high
         low_price = self.stock_dfs[0][1].low
-        # self.param_dict['WFO']  = False #disable WFO Function
+        adx_values = self.param_dict['adx_value']
+        rsi_windows = self.param_dict['rsi_window']
+        rsi_values = self.param_dict['rsi_value']
+
+        #2. calculate the indicators
         ind = vbt.IndicatorFactory(
                 class_name = 'AdxRsi',
                 input_names = ['high', 'low', 'close'],
@@ -101,6 +102,12 @@ class ADX_RSIStrategy(BaseStrategy):
                 rsi_values,
                 param_product= True,
                 )
+
+        #3. remove all the name in param_def from param_dict
+        for param in self.param_def:
+            del self.param_dict[param['name']]
+
+        #4. generate the vbt signal
         entries = res.entry_signal
         exits = res.exit_signal
 
@@ -108,29 +115,20 @@ class ADX_RSIStrategy(BaseStrategy):
         entries = entries.vbt.signals.fshift()
         exits = exits.vbt.signals.fshift()
 
-        if self.param_dict['WFO']:
-            entries, exits = self.maxSR_WFO(close_price, entries, exits, 'y', 3)
-            pf = vbt.Portfolio.from_signals(
-                        close = close_price,
-                        open = open_price,
-                        entries= entries, 
-                        exits = exits,
-                        **self.pf_kwargs)
-            self.param_dict = {'WFO': True}
-        else:        
-            pf = vbt.Portfolio.from_signals(
-                        close = close_price,
-                        open = open_price,
-                        entries= entries, 
-                        exits = exits,
-                        **self.pf_kwargs)
+        #5. Build portfolios
+        if self.param_dict['WFO']!='None':
+            entries, exits = self.maxRARM_WFO(close_price, entries, exits, calledby)
+            pf = vbt.Portfolio.from_signals(close=close_price, open=open_price, entries=entries, exits=exits, **self.pf_kwargs)
+        else:
+            pf = vbt.Portfolio.from_signals(close=close_price, open=open_price, entries=entries, exits=exits, **self.pf_kwargs)
             if calledby == 'add':
-                SRs = pf.sharpe_ratio()
-                idxmax = SRs[SRs != np.inf].idxmax()
-                if output_bool:
-                    plot_Histogram(close_price, pf, idxmax)
+                RARMs = eval(f"pf.{self.param_dict['RARM']}()")
+                idxmax = RARMs[RARMs != np.inf].idxmax()
+                if self.output_bool:
+                    plot_Histogram(pf, idxmax, f"Maximize {self.param_dict['RARM']}")
                 pf = pf[idxmax]
-                self.param_dict = dict(zip(['adx_value', 'rsi_window', 'rsi_value'], [int(idxmax[0]), int(idxmax[1]),int(idxmax[2])]))
+                
+                self.param_dict.update(dict(zip(['adx_value', 'rsi_window', 'rsi_value'], [int(idxmax[0]), int(idxmax[1]),int(idxmax[2])])))
        
         self.pf =pf
         return True

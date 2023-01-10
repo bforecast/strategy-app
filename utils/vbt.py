@@ -55,7 +55,7 @@ def plot_pf(pf, name= "", select=True):
                     ['cum_returns','orders', 'trade_pnl', 'drawdowns'], key='multiselect_'+str(pf.total_return()))
     if len(subplots) > 0:
         fig = pf.plot(subplots=subplots, )
-        st.plotly_chart(fig)
+        st.plotly_chart(fig, use_container_width=True)
         #save fig to the buffer
         buffer.write("<h4>Portfolio PLot</h2>")
         fig.write_html(buffer, include_plotlyjs='cdn')
@@ -92,13 +92,13 @@ def plot_cum_returns(df, title):
 	# return fig
     st.line_chart(df)
 
-def plot_Histogram(close_price, pf, idxmax):
+def plot_Histogram(pf, idxmax, idxmax_annotaiton=''):
     # st.plotly_chart(pf.total_return().vbt.histplot())
     fig = go.Figure()
     fig.add_trace(go.Histogram(x = pf.total_return()*100, name = "return", histnorm='percent'))
     fig.add_vline(x = pf[idxmax].total_return()*100, line_color = "firebrick", line_dash = 'dash', 
-                annotation_text="Max Sharpe Ratio", annotation_font_color='firebrick')
-    fig.add_vline(x = (close_price[-1]/close_price[0]-1)*100, line_color = "grey", annotation_text="Benchmark", annotation_position="top left")
+                annotation_text=idxmax_annotaiton, annotation_font_color='firebrick')
+    fig.add_vline(x = (pf.benchmark_value()[idxmax][-1]/pf.benchmark_value()[idxmax][0]-1)*100, line_color = "grey", annotation_text="Benchmark", annotation_position="top left")
     fig.update_layout(
             title= dict(text="Histogram of Returns", x=0.5, y=0.9), 
             xaxis_title_text = 'Return', # x轴label设置
@@ -108,19 +108,16 @@ def plot_Histogram(close_price, pf, idxmax):
             bargroupgap=0.1,         # 组内距离
             margin=go.layout.Margin(l=10, r=1, b=10)
         )
-    st.plotly_chart(fig)
+    st.plotly_chart(fig, use_container_width=True)
 
-def display_pfbrief(strategy):
-    pf = strategy.pf
-    param_dict = strategy.param_dict
-    total_return = round(pf.stats('total_return')[0]/100.0, 2)
+def display_pfbrief(pf, param_dict:dict):
     lastday_return = round(pf.returns()[-1], 2)
 
     sharpe_ratio = round(pf.stats('sharpe_ratio')[0], 2)
     maxdrawdown = round(pf.stats('max_dd')[0]/100.0, 2)
     annual_return = pf.annualized_return()
 
-    cols = st.columns(4 + len(param_dict))
+    cols = st.columns([1, 1, 1, 1, 4])
     with cols[0]:
         st.metric('Annualized', "{0:.0%}".format(annual_return))
     with cols[1]:
@@ -129,11 +126,9 @@ def display_pfbrief(strategy):
         st.metric('Sharpe Ratio', '%.2f'% sharpe_ratio)
     with cols[3]:
         st.metric('Max DD', '{0:.0%}'.format(maxdrawdown))
-    i = 4
-    for k, v in param_dict.items():
-        with cols[i]:
-            st.metric(k, v)
-        i = i + 1
+    with cols[4]:
+        param_str = dict(filter(lambda item: item[0] not in ['RARM', 'WFO'], param_dict.items()))
+        st.text_area("Parameters", value = param_str, height=2, label_visibility='collapsed',disabled=True)
 
 def init_vbtsetting():
     #initialize vbt setting

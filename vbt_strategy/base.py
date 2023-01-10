@@ -7,6 +7,16 @@ import vectorbt as vbt
 from utils.processing import AKData
 from utils.vbt import plot_pf
 
+def cal_TVWLength(n_days, O, R):
+    '''
+    calculate Train\Validate\Window days
+    # t + t/(1-o/100)*(o/100)*r = n
+    '''
+    train_length = round(n_days*(100-O)/(100-O+O*R))
+    validate_length = round(n_days*O/(100-O+O*R))
+    window = round(n_days*100/(100-O+O*R))
+    return train_length, validate_length, window
+
 class BaseStrategy(object):
     '''base strategy'''
     _name = "base"
@@ -16,6 +26,7 @@ class BaseStrategy(object):
     stock_dfs = []
     pf_kwargs = dict(fees=0.001, slippage=0.001, freq='1D')
     pf = None
+    output_bool = False
     
     def __init__(self, symbolsDate_dict:dict):
         market = symbolsDate_dict['market']
@@ -24,10 +35,7 @@ class BaseStrategy(object):
         self.end_date = symbolsDate_dict['end_date']
         self.datas = AKData(market)
         self.stock_dfs = []
-        if 'WFO' in symbolsDate_dict.keys():
-            self.param_dict['WFO'] = symbolsDate_dict['WFO']
-        else:
-            self.param_dict['WFO'] = False
+        self.param_dict = {}
         for symbol in symbols:
             if symbol!='':
                 stock_df = self.datas.get_stock(symbol, self.start_date, self.end_date)
@@ -50,12 +58,16 @@ class BaseStrategy(object):
     def log(self, txt, dt=None, doprint=False):
         pass
 
-    def maxSR(self, param, output_bool=False):
+    def maxRARM(self, param, output_bool=False):
+        '''
+        Maximize Risk-Adjusted Return Measurement
+        '''
         self.param_dict.update(param)
+        self.output_bool = output_bool
         # try:
         if True:
-            if self.run(output_bool, calledby='add'):
-                if output_bool:
+            if self.run(calledby='add'):
+                if self.output_bool:
                     plot_pf(self.pf)
                 return True
             else:
@@ -72,40 +84,101 @@ class BaseStrategy(object):
             return None
         else:
             for k, v in param_dict.items():
-                self.param_dict[k] = [v]
+                if k in ['RARM', 'WFO']:
+                    self.param_dict[k] = v
+                else:
+                    self.param_dict[k] = [v]
             self.run(calledby='update')
             return self.pf
 
-    def maxSR_WFO(self, price, entries, exits, to_period='y', window=1):
+    def maxRARM_WFO(self, price, entries, exits, calledby='add'):
         '''
         Walk Foreward Optimization:
-        to_period='y'   : update parameter of maxSR in to_period unit('Y')
-        window=1        : 1 year 
+        Risk-Adjusted Return and Measurement Methods
         '''
-        month_dups = price.index.to_period(to_period).duplicated()
-        month_days = []
-        for k, m in enumerate(month_dups):
-            if not m:
-                month_days.append(k)
+        if calledby == 'add':
+            Runs = [10, 15, 20, 25, 30]
+            OOS = [10, 20, 30, 40, ]
+        else:
+            Runs = self.param_dict['WFO_Run']
+            OOS =  self.param_dict['WFO_OOS']
+        n_days = len(price)
+        wfms_df = pd.DataFrame(columns=OOS, index=Runs)
 
-        num_months = len(month_days)
-        new_entries = np.full_like(price, False)
-        new_exits = np.full_like(price, False)
-        info_df = pd.DataFrame()
-        for m in range(window-1, num_months-1):
-            pf = vbt.Portfolio.from_signals(price[month_days[m-window+1]: month_days[m+1]], 
-                                          entries[month_days[m-window+1]: month_days[m+1]], 
-                                            exits[month_days[m-window+1]: month_days[m+1]], 
-                                            **self.pf_kwargs)
-            SRs = pf.sharpe_ratio()
-            idxmax = SRs[SRs != np.inf].idxmax()
-            # idxmax = pf.total_return().idxmax()
-            new_entries[month_days[m+1]: ] = entries[month_days[m+1]: ][idxmax]
-            new_exits[month_days[m+1]: ] = exits[month_days[m+1]: ][idxmax]
-            # info_dict[str(price.index[month_days[m+1]])] = str(idxmax)
-            info_df = info_df.append({'start': price.index[month_days[m+1]],
-                            'param': str(idxmax),
-                            'shape ratio': pf.sharpe_ratio()[idxmax]},
-                            ignore_index = True)
-        return new_entries, new_exits
+        update_bar = st.progress(0)
+        max_return = float('-inf')
+        max_entries = np.full_like(price, False)
+        max_exits = np.full_like(price, False)
+        max_R = 0
+        max_O = 0
+        for i, R in enumerate(Runs):
+            for O in OOS:
+                train_length, validate_length, window = cal_TVWLength(n_days, O, R)
+                tmp_entries = np.full_like(price, False)
+                tmp_exits = np.full_like(price, False)
+                for m in range(0, n_days-train_length, validate_length):
+                    if self.param_dict['WFO'] == 'Non-anchored':
+                        train_start = m
+                    else:
+                        train_start = 0
+                    train_end = m - validate_length + train_length
+                    pf = vbt.Portfolio.from_signals(price[train_start: train_end], 
+                                                    entries[train_start: train_end], 
+                                                    exits[train_start: train_end], 
+                                                    **self.pf_kwargs)
+                    RARMs = eval(f"pf.{self.param_dict['RARM']}()")
+                    if len(RARMs[RARMs != np.inf]) > 0:
+                        idxmax = RARMs[RARMs != np.inf].idxmax()
+                        if(not pd.isna(idxmax)):
+                            tmp_entries[train_end: ] = entries[train_end: ][idxmax]
+                            tmp_exits[train_end: ] = exits[train_end: ][idxmax]
+
+                pf = vbt.Portfolio.from_signals(price, tmp_entries, tmp_exits, **self.pf_kwargs)
+                wfms_df.loc[R, O] = pf.annualized_return()
+                if max_return < pf.annualized_return():
+                    max_return = pf.annualized_return()
+                    max_entries = tmp_entries
+                    max_exits = tmp_exits
+                    max_R = R
+                    max_O = O
+            update_bar.progress((i+1) / len(Runs))
+        if self.output_bool:
+            with st.expander("RUNS/OOS annualized returns' table"):
+                st.table(wfms_df.style.format(formatter="{:.2%}").background_gradient(cmap='YlGn'),)
+
+            # display max return's metric
+            train_length, validate_length, window = cal_TVWLength(n_days, max_O, max_R)
+            col1,col2,col3,col4,col5 = st.columns(5)
+            with col1:
+                st.metric("Max_Return's Run", max_R)
+            with col2:
+                st.metric("Max_Return's OOS", max_O)
+            with col3:
+                st.metric("Window", f'{window}')
+            with col4:
+                st.metric('Train days', train_length)
+            with col5:
+                st.metric('validate days', validate_length)
             
+            # plot in-out of sample graph
+            if max_R > 0:
+                i = 0
+                heatmap_df = pd.DataFrame(np.nan, columns=np.arange(max_R), index=price.index)
+                for m in range(0, n_days-train_length, validate_length):
+                    if self.param_dict['WFO'] == 'Non-anchored':
+                        train_start = m
+                    else:
+                        train_start = 0
+                    train_end = m + train_length
+                    t_series = np.full_like(price, np.nan)
+                    t_series[train_start: train_end] = 0
+                    t_series[train_end: train_end+validate_length] = 1
+                    heatmap_df[i] = t_series
+                    i+=1
+                fig = heatmap_df.vbt.ts_heatmap()
+                st.plotly_chart(fig, use_container_width=True)
+
+        self.param_dict['WFO_Run'] = max_R
+        self.param_dict['WFO_OOS'] = max_O
+
+        return max_entries, max_exits

@@ -43,32 +43,34 @@ class MOM_RSIStrategy(BaseStrategy):
             "type": "int",
             "min":  5,
             "max":  30,
-            "step": 1   
+            "step": 2   
             },
             {
             "name": "upper",
             "type": "float",
             "min":  0.0,
             "max":  0.1,
-            "step": 0.01   
+            "step": 0.02   
             },
             {
             "name": "lower",
             "type": "float",
             "min":  0.0,
             "max":  0.1,
-            "step": 0.01   
+            "step": 0.02   
             },
     ]
 
     @vbt.cached_method
-    def run(self, output_bool=False, calledby='add'):
+    def run(self, calledby='add'):
+        #1. initialize the variables
         windows = self.param_dict['window']
         uppers = self.param_dict['upper']
         lowers = self.param_dict['lower']
         close_price = self.stock_dfs[0][1].close
         open_price = self.stock_dfs[0][1].open
 
+        #2. calculate the indicators
         mom_indicator = get_MomInd().run(close_price, window=windows, lower=lowers, upper=uppers,\
             param_product=True)
         mom_entries = mom_indicator.entry_signal
@@ -78,11 +80,14 @@ class MOM_RSIStrategy(BaseStrategy):
                 window=10,
                 short_name='rsi',
                 param_product=True)
-
-
         rsi_entries = rsi.rsi_crossed_below(20)
         rsi_exits = rsi.rsi_crossed_above(80)
 
+        #3. remove all the name in param_def from param_dict
+        for param in self.param_def:
+            del self.param_dict[param['name']]
+
+        #4. generate the vbt signal
         if len(windows) > 1:
             rsi_entries_df = mom_entries.copy()
             rsi_exits_df = mom_exits.copy()
@@ -95,32 +100,24 @@ class MOM_RSIStrategy(BaseStrategy):
         else:
             entries = mom_entries | rsi_entries
             exits = mom_exits | rsi_exits
-
         #Don't look into the future
         entries = entries.vbt.signals.fshift()
         exits = exits.vbt.signals.fshift()
         
-        if self.param_dict['WFO']:
-            entries, exits = self.maxSR_WFO(close_price, entries, exits, 'y', 1)
-            pf = vbt.Portfolio.from_signals(close=close_price,
-                        open = open_price, 
-                        entries = entries, 
-                        exits = exits, 
-                        **self.pf_kwargs)
-            self.param_dict = {'WFO': True}
+        #5. Build portfolios
+        if self.param_dict['WFO']!='None':
+            entries, exits = self.maxRARM_WFO(close_price, entries, exits, calledby)
+            pf = vbt.Portfolio.from_signals(close=close_price, open=open_price, entries=entries, exits=exits, **self.pf_kwargs)
         else:
-            pf = vbt.Portfolio.from_signals(close=close_price,
-                        open = open_price, 
-                        entries = entries, 
-                        exits = exits, 
-                        **self.pf_kwargs)
+            pf = vbt.Portfolio.from_signals(close=close_price, open=open_price, entries=entries, exits=exits, **self.pf_kwargs)
             if calledby == 'add':
-                SRs = pf.sharpe_ratio()
-                idxmax = SRs[SRs != np.inf].idxmax()
-                if output_bool:
-                    plot_Histogram(close_price, pf, idxmax)
+                RARMs = eval(f"pf.{self.param_dict['RARM']}()")
+                idxmax = RARMs[RARMs != np.inf].idxmax()
+                if self.output_bool:
+                    plot_Histogram(pf, idxmax, f"Maximize {self.param_dict['RARM']}")
                 pf = pf[idxmax]
-                self.param_dict = dict(zip(['window', 'lower', 'upper'], [int(idxmax[0]), round(idxmax[2], 4), round(idxmax[1], 4)]))
+                
+                self.param_dict.update(dict(zip(['window', 'lower', 'upper'], [int(idxmax[0]), round(idxmax[2], 4), round(idxmax[1], 4)])))
         
         self.pf =pf
         return True

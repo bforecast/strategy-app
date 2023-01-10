@@ -32,8 +32,8 @@ if check_password():
                 st.subheader("Stocks:    " + ' , '.join(get_symbolsname(symbolsDate_dict['symbols'])))
                 params = params_selector(strategy.param_def)
                 if check_params(params):
-                    if strategy.maxSR(params, output_bool=True):
-                        st.text("Max Sharpe_Ratio's parameters:    " + str(strategy.param_dict))
+                    if strategy.maxRARM(params, output_bool=True):
+                        st.text(f"Maximize Target's Parameters:    " + str(strategy.param_dict))
                         form_SavePortfolio(symbolsDate_dict, strategyName, strategy.param_dict, strategy.pf)
                     else:
                         st.error("Stocks don't match the Strategy.")

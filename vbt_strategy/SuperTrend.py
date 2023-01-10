@@ -67,21 +67,22 @@ class SuperTrendStrategy(BaseStrategy):
             {
             "name": "window",
             "type": "int",
-            "min":  4,
-            "max":  20,
-            "step": 1   
+            "min":  1,
+            "max":  30,
+            "step": 2   
             },
             {
             "name": "multiplier",
             "type": "float",
             "min":  2.0,
             "max":  4.1,
-            "step": 0.1   
+            "step": 0.2   
             },
     ]
 
     @vbt.cached_method
-    def run(self, output_bool=False, calledby='add'):
+    def run(self, calledby='add')->bool:
+        #1. initialize the variables
         windows = self.param_dict['window']
         multipliers = self.param_dict['multiplier']
         high_price = self.stock_dfs[0][1].high
@@ -89,16 +90,15 @@ class SuperTrendStrategy(BaseStrategy):
         close_price = self.stock_dfs[0][1].close
         open_price = self.stock_dfs[0][1].open
 
-        symbol = self.stock_dfs[0][0]
-
+        #2. calculate the indicators
         SuperTrend = vbt.IndicatorFactory(
-            class_name='SuperTrend',
-            input_names=['high', 'low', 'close'],
-            param_names=['window', 'multiplier'],
-            output_names=['supert', 'superd', 'superl', 'supers']
-        ).from_apply_func(
-            faster_supertrend_talib
-        )
+                class_name='SuperTrend',
+                input_names=['high', 'low', 'close'],
+                param_names=['window', 'multiplier'],
+                output_names=['supert', 'superd', 'superl', 'supers']
+            ).from_apply_func(
+                faster_supertrend_talib
+            )
 
         st_indicator = SuperTrend.run(
                 high_price, low_price, close_price, 
@@ -106,30 +106,29 @@ class SuperTrendStrategy(BaseStrategy):
                 multiplier = multipliers,
                 param_product=True,
             )
+
+        #3. remove all the name in param_def from param_dict
+        for param in self.param_def:
+            del self.param_dict[param['name']]
+
+        #4. generate the vbt signal
         entries = (~st_indicator.superl.isnull()).vbt.signals.fshift()
         exits = (~st_indicator.supers.isnull()).vbt.signals.fshift()
 
-        if self.param_dict['WFO']:
-            entries, exits = self.maxSR_WFO(close_price, entries, exits, 'y', 1)
-            pf = vbt.Portfolio.from_signals(close=close_price,
-                        open = open_price, 
-                        entries = entries, 
-                        exits = exits, 
-                        **self.pf_kwargs)
-            self.param_dict = {'WFO': True}
+        #5. Build portfolios
+        if self.param_dict['WFO']!='None':
+            entries, exits = self.maxRARM_WFO(close_price, entries, exits, calledby)
+            pf = vbt.Portfolio.from_signals(close=close_price, open=open_price, entries=entries, exits=exits, **self.pf_kwargs)
         else:
-            pf = vbt.Portfolio.from_signals(close=close_price,
-                        open = open_price, 
-                        entries = entries, 
-                        exits = exits, 
-                        **self.pf_kwargs)
+            pf = vbt.Portfolio.from_signals(close=close_price, open=open_price, entries=entries, exits=exits, **self.pf_kwargs)
             if calledby == 'add':
-                SRs = pf.sharpe_ratio()
-                idxmax = SRs[SRs != np.inf].idxmax()
-                if output_bool:
-                    plot_Histogram(close_price, pf, idxmax)
+                RARMs = eval(f"pf.{self.param_dict['RARM']}()")
+                idxmax = RARMs[RARMs != np.inf].idxmax()
+                if self.output_bool:
+                    plot_Histogram(pf, idxmax, f"Maximize {self.param_dict['RARM']}")
                 pf = pf[idxmax]
-                self.param_dict = dict(zip(['window', 'multiplier'], [int(idxmax[0]), round(idxmax[1], 1)]))
+
+                self.param_dict.update(dict(zip(['window', 'multiplier'], [int(idxmax[0]), round(idxmax[1], 1)])))
         
         self.pf =pf
         return True

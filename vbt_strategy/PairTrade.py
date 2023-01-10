@@ -205,7 +205,7 @@ class PairTradeStrategy(BaseStrategy):
         ]
 
     @vbt.cached_method
-    def run(self, output_bool=False, calledby='add'):
+    def run(self, calledby='add'):
         #initialize Parameters
         window = 100
         CASH = 100000
@@ -261,7 +261,7 @@ class PairTradeStrategy(BaseStrategy):
             )
 
         vbt_pf_mult = simulate_mult_from_order_func(windows, uppers, lowers)
-        if output_bool:
+        if self.output_bool:
             # Draw all window combinations as a 3D volume
             st.plotly_chart(
                 vbt_pf_mult.total_return().vbt.volume(
@@ -281,8 +281,8 @@ class PairTradeStrategy(BaseStrategy):
             # Max Sharpe_ratio Parameter
             SRs = vbt_pf_mult.sharpe_ratio()
             idxmax = SRs[SRs != np.inf].idxmax()
-            if output_bool:
-                    plot_Histogram(close_price, pf, idxmax)    
+            # if output_bool:
+            #         plot_Histogram(close_price, pf, idxmax)    
             pf = vbt_pf_mult[idxmax]
             self.param_dict = dict(zip(['window', 'upper', 'lower'], [int(idxmax[0]), round(idxmax[1], 4), round(idxmax[2], 4)]))
         else:
@@ -290,7 +290,7 @@ class PairTradeStrategy(BaseStrategy):
         self.pf =pf
         return True
 
-    def maxSR(self, param, output_bool=False):
+    def maxRARM(self, param, output_bool=False):
         if len(self.stock_dfs) > 1:
             return super(PairTradeStrategy, self).maxSR(param, output_bool)
         else:
