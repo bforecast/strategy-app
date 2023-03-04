@@ -15,6 +15,8 @@ from utils.riskfolio import get_pfOpMS, FactorExposure, plot_AssetsClusters
 from utils.portfolio import Portfolio
 from utils.vbt import get_pfByWeight, get_pfByMaxReturn, plot_pf
 from utils.processing import get_stocks
+from utils.rrg import plot_RRG
+
 
 # @st.cache_data()
 def get_bobmaxsr(_symbolsDate_dict:dict, fund_desc:str = ""):
@@ -163,8 +165,8 @@ def main():
     start_date, end_date = input_dates()
     symbolsDate_dict={
                     'market':       'US',
-                    'symbols':      df.iloc[0:10]['Ticker'].values,
-                    'weights':      df.iloc[0:10]['Portfolio (%)'].values,
+                    'symbols':      df.iloc[0:10]['Ticker'].tolist(),
+                    'weights':      df.iloc[0:10]['Portfolio (%)'].tolist(),
                     'start_date':   start_date,
                     'end_date':     end_date,
                     }
@@ -187,10 +189,16 @@ def main():
 
         # 2.1.3 calculate the factors effect of Original fund portfolio.
         show_FactorExposure(symbolsDate_dict, pf, stocks_df)
-        # 2.1.4 calculate the factors effect of Original fund portfolio.
+        # 2.1.4 Assets Clusters of Original fund portfolio.
         st.write("**资产层次聚类(Assets Clusters)：**")
         with st.expander("The codependence or similarity matrix: pearson; Linkage method of hierarchical clustering: ward"):
             plot_AssetsClusters(stocks_df)
+        # 2.1.5 plot RRG
+        st.write("**相对轮动(RRG):**")
+        symbol_benchmark = 'SPY'
+        symbolsDate_dict['symbols'] += [symbol_benchmark]
+        stocks_df = get_stocks(symbolsDate_dict,'close')
+        plot_RRG(symbol_benchmark, stocks_df)
             
     elif subpage == 'Max Sharpe Weights':
         # 2.2.1 calculate the optimized max sharpe ratio's portfolio.
