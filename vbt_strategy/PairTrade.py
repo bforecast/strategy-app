@@ -8,7 +8,7 @@ from statsmodels.tsa.stattools import coint
 import streamlit as st
 
 from .base import BaseStrategy
-from utils.vbt import plot_Histogram
+from utils.vbt import plot_CSCV
 
 @njit
 def rolling_logret_zscore_nb(a, b, window):
@@ -282,7 +282,7 @@ class PairTradeStrategy(BaseStrategy):
             SRs = vbt_pf_mult.sharpe_ratio()
             idxmax = SRs[SRs != np.inf].idxmax()
             # if output_bool:
-            #         plot_Histogram(close_price, pf, idxmax)    
+            #         plot_CSCV(close_price, pf, idxmax)    
             pf = vbt_pf_mult[idxmax]
             self.param_dict = dict(zip(['window', 'upper', 'lower'], [int(idxmax[0]), round(idxmax[1], 4), round(idxmax[2], 4)]))
         else:

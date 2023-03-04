@@ -7,7 +7,7 @@ import streamlit as st
 import vectorbt as vbt
 
 from .base import BaseStrategy
-from utils.vbt import plot_Histogram
+from utils.vbt import plot_CSCV
 
 def ecdf_nb(arr):
     result_arr = arr.copy()
@@ -107,7 +107,7 @@ class PETORStrategy(BaseStrategy):
                 RARMs = eval(f"pf.{self.param_dict['RARM']}()")
                 idxmax = RARMs[RARMs != np.inf].idxmax()
                 if self.output_bool:
-                    plot_Histogram(pf, idxmax, f"Maximize {self.param_dict['RARM']}")
+                    plot_CSCV(pf, idxmax, self.param_dict['RARM'])
                 pf = pf[idxmax]
 
                 self.param_dict.update(dict(zip(['pe_rankH', 'pe_rankL', 'tor_rank'], [int(idxmax[0]), int(idxmax[1]), int(idxmax[2])])))

@@ -16,14 +16,14 @@ from utils.portfolio import Portfolio
 from utils.vbt import get_pfByWeight, get_pfByMaxReturn, plot_pf
 from utils.processing import get_stocks
 
-@st.cache(allow_output_mutation=True)
-def get_bobmaxsr(symbolsDate_dict:dict, fund_desc:str = ""):
+# @st.cache_data()
+def get_bobmaxsr(_symbolsDate_dict:dict, fund_desc:str = ""):
     '''
     get the best of best max sharpe ratio solution
     '''
     strategy_list = getattr(__import__(f"vbt_strategy"), 'strategy_list')
     max_dict = {
-        "symbol": symbolsDate_dict['symbols'][0],
+        "symbol": _symbolsDate_dict['symbols'][0],
         "sharpe ratio": 0,
         "pf":   None,
         "strategy name": '',
@@ -32,9 +32,11 @@ def get_bobmaxsr(symbolsDate_dict:dict, fund_desc:str = ""):
         }
     for strategyname in strategy_list:
         strategy_cls = getattr(__import__(f"vbt_strategy"), strategyname + 'Strategy')
-        strategy = strategy_cls(symbolsDate_dict)
+        strategy = strategy_cls(_symbolsDate_dict)
         if len(strategy.stock_dfs) > 0:
-            if strategy.maxSR(strategy.param_dict, output_bool=False):
+            strategy.param_dict['RARM'] = 'sharpe_ratio'
+            strategy.param_dict['WFO'] = 'None'
+            if strategy.maxRARM(strategy.param_dict, output_bool=False):
                 sharpe_ratio = round(strategy.pf.stats('sharpe_ratio')[0], 2)
                 if sharpe_ratio > max_dict['sharpe ratio']:
                     max_dict['sharpe ratio'] = sharpe_ratio
@@ -65,7 +67,8 @@ def cal_beststrategy(symbolsDate_dict, fund_desc):
             col1.text(bob_dict['symbol'])  
             col2.text(bob_dict['sharpe ratio'])
             col3.text(bob_dict['strategy name'])
-            col4.text(json.dumps(bob_dict['param_dict']),)
+            print(bob_dict['param_dict'])
+            col4.text(json.dumps(bob_dict['param_dict']))
             button_type = "Save"
             button_phold = col5.empty()  # create a placeholder
             do_action = button_phold.button(button_type, key='btn_save_'+symbol)
@@ -80,11 +83,35 @@ def cal_beststrategy(symbolsDate_dict, fund_desc):
     return bobs
 
 def show_FactorExposure(symbolsDate_dict, pf, stocks_df):
-    st.write("**因子暴露分析(Factor Exposures)：**")
-    with st.expander("包含动量（MTUM）、质量（QUAL）、规模（SIZE）、低波动（USMV）、价值（VLUE）五个因子"):
-        factors =  ['MTUM', 'QUAL', 'SIZE', 'USMV', 'VLUE']
+    factors_dict = {
+        "None" : "Select the Factors Exposure",
+        "iShares 5 factors" : {
+            'MTUM' : "动量", 
+            'QUAL' : "质量", 
+            'SIZE' : "规模", 
+            'USMV' : "低波动", 
+            'VLUE' : "价值"
+        },
+        "All Sector factors" : {
+            "XLB" : "原材料",
+            "XLC" : "通讯",
+            "XLE" : "能源",
+            "XLF" : "金融",
+            "XLI" : "工业制造",
+            "XLK" : "技术",
+            "XLP" : "必需消费",
+            "XLRE": "房地产",
+            "XLU" : "公用事业",
+            "XLV" : "医药",
+            "XLY" : "可选消费品"
+        }
+    }
+    factors_sel = st.selectbox("**因子暴露分析(Factor Exposures)**", factors_dict.keys())
+    factors_sel = factors_dict[factors_sel]
+    if isinstance(factors_sel, dict):
+        st.write('、'.join(k+'('+v+')' for v,k in factors_sel.items()))
         sd_dict = symbolsDate_dict.copy()
-        sd_dict['symbols'] = factors
+        sd_dict['symbols'] = factors_sel.keys()
         factors_df = get_stocks(sd_dict, 'close')
         portfolio_df = pf.asset_value().to_frame("Portfolio")
         main_df = pd.concat([portfolio_df, stocks_df], axis=1)
@@ -98,11 +125,6 @@ def main():
                     "AM", "aq", "oc", "HC", "SAM", "PI", "DA", "BAUPOST", "FS", "GR"]
     
     fund_ticker = st.sidebar.selectbox("Select US Funds", funds_tickers, help="data from dataroma.com")
-    # si_df = getSuperInvestors()
-    # st.write(si_df)
-    # selected_df = show_siTable(si_df)
-    # if show_siTable(si_df):
-    #     fund_ticker = selected_df.loc[0, 'ticker']
     try:
         fund_data = getData(fund_ticker)
     except ValueError as ve:
@@ -146,7 +168,7 @@ def main():
                     'start_date':   start_date,
                     'end_date':     end_date,
                     }
-    subpage = st.sidebar.radio("Select Optimized Methods:", ('Original Weights', 'Max Sharpe Weights', 'Optimize stocks first, then Maximize total return'), 
+    subpage = st.sidebar.radio("Select Optimized Methods:", ('Original Weights', 'Max Sharpe Weights'), #'Optimize stocks first, then Maximize total return'
                                 horizontal=True)
     if subpage == 'Original Weights':
         # 2.1.1 plot Pie chart of Orginial fund porforlio.
@@ -200,37 +222,38 @@ def main():
         show_FactorExposure(symbolsDate_dict, pf, stocks_df)
 
     else:
-        st.subheader(subpage)
-        bobs = cal_beststrategy(symbolsDate_dict, f"Owned by {fund_ticker} in {fund_data[1]}")
-        returns_df = pd.DataFrame()
-        bobs_df = pd.DataFrame()
-        for bob_dict in bobs:
-            returns_df[bob_dict['symbol']] = bob_dict['pf'].value()
-            bobs_df = bobs_df.append({'symbol': bob_dict['symbol'],
-                                    'strategy name': bob_dict['strategy name'],
-                                    'param_dict': json.dumps(bob_dict['param_dict']),
-                                    'sharpe ratio': bob_dict['sharpe ratio']
-                                    }, ignore_index=True)
-        st.write("**Step 1: Original Fund weights' Portfolio of BOBs**")
-        weights = []
-        for symbol in returns_df.columns:
-            weights.append(df.loc[symbol,'Portfolio (%)'])
-        weights = weights / sum(weights)
-        pf = get_pfByWeight(returns_df, weights)
+        st.warning("Not available.") 
+        # st.subheader(subpage)
+        # bobs = cal_beststrategy(symbolsDate_dict, f"Owned by {fund_ticker} in {fund_data[1]}")
+        # returns_df = pd.DataFrame()
+        # bobs_df = pd.DataFrame()
+        # for bob_dict in bobs:
+        #     returns_df[bob_dict['symbol']] = bob_dict['pf'].value()
+        #     bobs_df = bobs_df.append({'symbol': bob_dict['symbol'],
+        #                             'strategy name': bob_dict['strategy name'],
+        #                             'param_dict': json.dumps(bob_dict['param_dict']),
+        #                             'sharpe ratio': bob_dict['sharpe ratio']
+        #                             }, ignore_index=True)
+        # st.write("**Step 1: Original Fund weights' Portfolio of BOBs**")
+        # weights = []
+        # for symbol in returns_df.columns:
+        #     weights.append(df.loc[symbol,'Portfolio (%)'])
+        # weights = weights / sum(weights)
+        # pf = get_pfByWeight(returns_df, weights)
 
-        pie_df = pd.DataFrame({'Ticker':returns_df.columns, 'Weights': weights})
-        st.plotly_chart(
-            px.pie(pie_df, values='Weights', names='Ticker', title="Max Return's Allocation")
-            )
-        plot_pf(pf, select=False, name=f"{fund_ticker}-Top10 Stocks max sharpe -Original Weights")
+        # pie_df = pd.DataFrame({'Ticker':returns_df.columns, 'Weights': weights})
+        # st.plotly_chart(
+        #     px.pie(pie_df, values='Weights', names='Ticker', title="Max Return's Allocation")
+        #     )
+        # plot_pf(pf, select=False, name=f"{fund_ticker}-Top10 Stocks max sharpe -Original Weights")
 
-        st.write("**Step 2: Max Return Portfolio of BOBs**")
-        pf, newWeights = get_pfByMaxReturn(returns_df)
-        pie_df = pd.DataFrame({'Ticker':returns_df.columns, 'Weights': newWeights})
-        st.plotly_chart(
-            px.pie(pie_df, values='Weights', names='Ticker', title="Max Return's Allocation")
-            )
-        plot_pf(pf, select=False, name=f"{fund_ticker}-Top10 Stocks max sharpe -Max return Weights")
+        # st.write("**Step 2: Max Return Portfolio of BOBs**")
+        # pf, newWeights = get_pfByMaxReturn(returns_df)
+        # pie_df = pd.DataFrame({'Ticker':returns_df.columns, 'Weights': newWeights})
+        # st.plotly_chart(
+        #     px.pie(pie_df, values='Weights', names='Ticker', title="Max Return's Allocation")
+        #     )
+        # plot_pf(pf, select=False, name=f"{fund_ticker}-Top10 Stocks max sharpe -Max return Weights")
 
 if check_password():
     main()

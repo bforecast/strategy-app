@@ -9,6 +9,10 @@ import streamlit as st
 # st.set_page_config(initial_sidebar_state='collapsed',)
 
 import vectorbt as vbt
+import qlib
+from qlib.config import REG_CN
+from qlib.tests.data import GetData
+
 
 from bokeh.models import ColumnDataSource, CustomJS, DateFormatter, NumberFormatter
 from bokeh.models import DataTable, TableColumn
@@ -289,4 +293,6 @@ def main():
 
 if __name__ == "__main__":
     if check_password():
+        # provider_uri = "e:/qlib_data/cn"  # target_dir
+        # qlib.init(provider_uri=provider_uri, region=REG_CN)
         main()

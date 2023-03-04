@@ -3,7 +3,6 @@ import pandas as pd
 
 import streamlit as st
 import vectorbt as vbt
-# import pyhht
 from PyEMD import EEMD, CEEMDAN, EMD
 from vmdpy import VMD
 
@@ -17,7 +16,7 @@ import tftb.processing
 
 
 from .base import BaseStrategy
-from utils.vbt import plot_Histogram
+from utils.vbt import plot_CSCV
 
 # Dickey-Fuller test
 from statsmodels.tsa.stattools import adfuller
@@ -109,6 +108,24 @@ def plotly_HHTEMD(symbol, signal, imfs):
     fig.update_layout(title ={'text': f"{symbol}'s EMD分解/周期中位值", 'font_size':30, 'y': 0.98, 'x': 0.5, 'xanchor': 'center'},)
     st.plotly_chart(fig, use_container_width=True)
 
+def MedianOfCycles(imfs):
+    Cycles = []
+    for i, imf in enumerate(imfs):
+        imfsHT = hilbert(imf)
+        # 计算Hilbert变换后的瞬时频率median值
+        instf, timestamps = tftb.processing.inst_freq(imfsHT)
+        Cycles.append(round_int(1/np.median(instf)))
+    return Cycles
+
+def lastInstCycles(imfs):
+    Cycles = []
+    for i, imf in enumerate(imfs):
+        imfsHT = hilbert(imf)
+        # 计算Hilbert变换后的瞬时频率median值
+        instf, timestamps = tftb.processing.inst_freq(imfsHT)
+        Cycles.append(round_int(1/instf[-1]))
+    return Cycles
+
 def plotly_HHTEMDdiff(symbol, signal, imfs1, imfs2):
     time_samples = signal.index
     n_imfs1 = imfs1.shape[0]
@@ -170,7 +187,7 @@ def imf_max_freq(imf,sample_rate,fft_size):
 
 def cal_EMD(signal):
     np_signal=np.array(signal)
-    emd = EMD(extrema_detection='parabol')
+    emd = EMD()
     imfs = emd.emd(np_signal)
     return imfs
 
@@ -185,7 +202,7 @@ def cal_EMDMirror(signal):
 
 def cal_EEMD(signal):
     np_signal=np.array(signal)
-    eemd = EEMD(trials=100, noise_width=0.2)
+    eemd = EEMD(trials=20,)   #trials=100, noise_width=0.2
     imfs = eemd.eemd(np_signal)
     return imfs
 
@@ -216,6 +233,7 @@ def cal_VMD(signal):
 class HHTStrategy(BaseStrategy):
     '''HHT strategy'''
     _name = "HHT"
+    desc = "基本思路是获取股价收盘信息后，使用希尔伯特黄变换将股价波动数据拆解为不同周期的波动曲线。再本别利用频谱分析计算每一个曲线的频率。目标是将股价波动数据拆解为不同周期波动的叠加态。"
     param_def = [
             {
             "name": "n_imf",
@@ -233,7 +251,10 @@ class HHTStrategy(BaseStrategy):
         symbol = self.stock_dfs[0][0]
 
         #2. calculate the indicators
-        imfs = cal_EMD(close_price)
+        imfs = cal_EEMD(close_price)
+        # signal = close_price - imfs[-1] # 趋势去除
+        # adf_test(signal)
+        # imfs = cal_EMD(signal)
 
         if self.output_bool:
             #2.1 plot all imfs
@@ -281,27 +302,51 @@ class HHTStrategy(BaseStrategy):
             exits = pd.Series(np.full(close_price.shape[0], False, dtype=bool), index=close_price.index)
             imf_signal = pd.Series(index=close_price.index)
 
-            window = 12*21  #yearly
+            window = 12*21*2  #yearly
             validate_period = 1
             # st.write(entries)
             update_bar = st.progress(0)
 
+            cycle = 0
+            closet_nimfs = []
             for m in range(0, num_periods-window, validate_period):
                 imfs = cal_EMD(close_price[m:m+window])
-                if n_imf < len(imfs):
-                    imf = imfs[n_imf]
-                    if (imf[-2] > imf[-1]) & (imf[-3] < imf[-2]):
-                        exits[m+window-1] = True
-                    elif (imf[-2] < imf[-1]) & (imf[-3] > imf[-2]):
+                cycles = MedianOfCycles(imfs)
+                if cycle == 0:
+                    cycle = cycles[n_imf]
+                    st.text(f"imf{n_imf}: {cycle} days cycle")
+                closet_nimf = cycles.index(min(cycles, key=lambda x: abs(x - cycle)))
+                if closet_nimf != n_imf:
+                    closet_nimfs.append((m, closet_nimf))
+                    
+                if closet_nimf < len(imfs):
+                    imf = imfs[closet_nimf]
+                    # A.peak/valley selection
+                    # if (imf[-2] > imf[-1]) & (imf[-3] < imf[-2]):
+                    #     exits[m+window-1] = True
+                    # elif (imf[-2] < imf[-1]) & (imf[-3] > imf[-2]):
+                    #     entries[m+window-1] = True
+                    
+                    # B. filter by 90% of max, 10% of min 
+                    max_imf = min(max(imf), 20)
+                    min_imf = max(min(imf), -20)
+                    if imf[-2] < 0 and imf[-2] < min_imf * 0.8 and imf[-2] > -15:
                         entries[m+window-1] = True
-                    imf_signal[m+window-1] = imf[-1]
+                    elif imf[-2] > 0 and imf[-2] > max_imf * 0.8 and imf[-2] < 15:
+                        exits[m+window-1] = True
+
+                    imf_signal[m+window-2] = max(min(imf[-2], 20), -20)
                 else:
                     st.warning(f"imfs[{n_imf}] of {entries.index[m]} is missing.")
                 update_bar.progress((m+1) / (num_periods-window))
+            st.text(f"大于20 的数量:{np.sum(imf_signal >20)}/{len(imf_signal)}")
+            st.text(f"小于-20的数量:{np.sum(imf_signal <-20)}/{len(imf_signal)}")
+
 
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=imf_signal.index, y=imf_signal, name=f"imf_signal"),)
-            st.plotly_chart(fig.add_trace(go.Scatter(x=imf_signal.index[m:], y=imf, name=f"imf{n_imf}")),
+            fig.add_trace(go.Scatter(x=imf_signal.index, y=entries, name=f"entries"),)
+            st.plotly_chart(fig.add_trace(go.Scatter(x=imf_signal.index[m:], y=imf, name=f"imf{n_imf}", line=dict(color='firebrick', width=4))),
                             use_container_width=True)  
             pf = vbt.Portfolio.from_signals(close=close_price,
                         open = open_price, 
@@ -315,7 +360,7 @@ class HHTStrategy(BaseStrategy):
                 RARMs = eval(f"pf.{self.param_dict['RARM']}()")
                 idxmax = RARMs[RARMs != np.inf].idxmax()
                 if self.output_bool:
-                    plot_Histogram(pf, idxmax, f"Maximize {self.param_dict['RARM']}")
+                    plot_CSCV(pf, idxmax, self.param_dict['RARM'])
                 pf = pf[idxmax]
                 self.param_dict.update({'n_imf': idxmax})
 

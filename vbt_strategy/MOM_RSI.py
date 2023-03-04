@@ -7,7 +7,7 @@ from numba import njit
 import streamlit as st
 import vectorbt as vbt
 
-from utils.vbt import plot_Histogram
+from utils.vbt import plot_CSCV
 
 @njit
 def apply_mom_nb(price, window, lower, upper):
@@ -114,7 +114,7 @@ class MOM_RSIStrategy(BaseStrategy):
                 RARMs = eval(f"pf.{self.param_dict['RARM']}()")
                 idxmax = RARMs[RARMs != np.inf].idxmax()
                 if self.output_bool:
-                    plot_Histogram(pf, idxmax, f"Maximize {self.param_dict['RARM']}")
+                    plot_CSCV(pf, idxmax, self.param_dict['RARM'])
                 pf = pf[idxmax]
                 
                 self.param_dict.update(dict(zip(['window', 'lower', 'upper'], [int(idxmax[0]), round(idxmax[2], 4), round(idxmax[1], 4)])))

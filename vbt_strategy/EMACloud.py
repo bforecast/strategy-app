@@ -9,7 +9,7 @@ import plotly.express as px
 from numba import njit
 
 from .base import BaseStrategy
-from utils.vbt import plot_Histogram
+from utils.vbt import plot_CSCV
 
 def plot_cloud(fig, legend, shortEMA, longEMA, color1, color2):
         longEMA_down = longEMA[longEMA < shortEMA].append(shortEMA[longEMA >= shortEMA]).sort_index()
@@ -208,7 +208,7 @@ class EMACloudStrategy(BaseStrategy):
                 RARMs = eval(f"pf.{self.param_dict['RARM']}()")
                 idxmax = RARMs[RARMs != np.inf].idxmax()
                 if self.output_bool:
-                    plot_Histogram(pf, idxmax, f"Maximize {self.param_dict['RARM']}")
+                    plot_CSCV(pf, idxmax, self.param_dict['RARM'])
                     plot_EMAClouds(close_price, int(idxmax[0]), int(idxmax[1]), int(idxmax[2]), int(idxmax[3]))
                 pf = pf[idxmax]
                 self.param_dict.update(dict(zip(['ShortLower', 'ShortUpper', 'MediumLower' , 'MediumUpper'], [int(idxmax[0]), int(idxmax[1]), int(idxmax[2]), int(idxmax[3])])))

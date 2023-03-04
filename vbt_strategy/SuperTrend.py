@@ -6,7 +6,7 @@ import vectorbt as vbt
 import talib
 
 from .base import BaseStrategy
-from utils.vbt import plot_Histogram
+from utils.vbt import plot_CSCV
 
 
 @njit
@@ -125,7 +125,7 @@ class SuperTrendStrategy(BaseStrategy):
                 RARMs = eval(f"pf.{self.param_dict['RARM']}()")
                 idxmax = RARMs[RARMs != np.inf].idxmax()
                 if self.output_bool:
-                    plot_Histogram(pf, idxmax, f"Maximize {self.param_dict['RARM']}")
+                    plot_CSCV(pf, idxmax, self.param_dict['RARM'])
                 pf = pf[idxmax]
 
                 self.param_dict.update(dict(zip(['window', 'multiplier'], [int(idxmax[0]), round(idxmax[1], 1)])))

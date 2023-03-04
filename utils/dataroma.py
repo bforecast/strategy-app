@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import numpy as np
 import streamlit as st
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@st.cache_data(ttl = 86400)
 def getData(holding_ticker):
     # Data Extraction
     # We obtain the HTML from the corresponding fund in Dataroma.
@@ -107,7 +107,7 @@ def getDataBuys(holding_ticker):
     print(df.head())
     return
 
-@st.cache(allow_output_mutation=True, ttl = 86400)
+@st.cache_data(ttl = 86400)
 def getSuperInvestors():
     # Data Extraction
     # We obtain the HTML from the corresponding fund in Dataroma.

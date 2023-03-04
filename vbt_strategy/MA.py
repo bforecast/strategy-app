@@ -5,7 +5,7 @@ import streamlit as st
 import vectorbt as vbt
 
 from .base import BaseStrategy
-from utils.vbt import plot_Histogram
+from utils.vbt import plot_CSCV
 
 class MAStrategy(BaseStrategy):
     '''MA strategy'''
@@ -58,7 +58,7 @@ class MAStrategy(BaseStrategy):
                 RARMs = eval(f"pf.{self.param_dict['RARM']}()")
                 idxmax = RARMs[RARMs != np.inf].idxmax()
                 if self.output_bool:
-                    plot_Histogram(pf, idxmax, f"Maximize {self.param_dict['RARM']}")
+                    plot_CSCV(pf, idxmax, self.param_dict['RARM'])
                 pf = pf[idxmax]
 
                 self.param_dict['fast_window'] = int(idxmax[0])
@@ -114,7 +114,7 @@ class MAStrategy(BaseStrategy):
     #             SRs = pf.sharpe_ratio()
     #             idxmax = SRs[SRs != np.inf].idxmax()
     #             if output_bool:
-    #                 plot_Histogram(pf, idxmax)
+    #                 plot_CSCV(pf, idxmax)
     #             pf = pf[idxmax]
     #             params_value = entries.columns[idxmax*num_symbol]
     #             self.param_dict = dict(zip(['fast_window', 'slow_window'], [int(params_value[0]), int(params_value[1])]))

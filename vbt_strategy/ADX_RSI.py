@@ -8,7 +8,7 @@ import streamlit as st
 import vectorbt as vbt
 import talib
 
-from utils.vbt import plot_Histogram
+from utils.vbt import plot_CSCV
 
 @njit(cache=True)
 def AdxRsi_signal_nb(close, adx, rsi_below, rsi_above):
@@ -125,7 +125,7 @@ class ADX_RSIStrategy(BaseStrategy):
                 RARMs = eval(f"pf.{self.param_dict['RARM']}()")
                 idxmax = RARMs[RARMs != np.inf].idxmax()
                 if self.output_bool:
-                    plot_Histogram(pf, idxmax, f"Maximize {self.param_dict['RARM']}")
+                    plot_CSCV(pf, idxmax, self.param_dict['RARM'])
                 pf = pf[idxmax]
                 
                 self.param_dict.update(dict(zip(['adx_value', 'rsi_window', 'rsi_value'], [int(idxmax[0]), int(idxmax[1]),int(idxmax[2])])))

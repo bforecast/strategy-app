@@ -5,8 +5,10 @@ import io
 import streamlit as st
 import vectorbt as vbt
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from vectorbt.portfolio.base import Portfolio
+from .overfitting import CSCV
 
 def plot_allocation(rb_pf, symbols):
     # Plot weights development of the portfolio
@@ -106,9 +108,46 @@ def plot_Histogram(pf, idxmax, idxmax_annotaiton=''):
             yaxis_title_text = 'Percentage of Count', # 默认聚合函数count
             yaxis_ticksuffix = "%",
             bargroupgap=0.1,         # 组内距离
-            margin=go.layout.Margin(l=10, r=1, b=10)
+            # margin=go.layout.Margin(l=10, r=1, b=10)
         )
     st.plotly_chart(fig, use_container_width=True)
+
+def plot_CSCV(pf, idxmax, RARM):
+    # perform CSCV algorithm
+    cscv = CSCV(10, RARM)
+    cscv.add_daily_returns(pf.daily_returns())
+    results = cscv.estimate_overfitting(plot=False)
+    pbo_test = round(results['pbo_test'] * 100, 2)
+
+    with st.expander(f'Probability of overfitting:  {pbo_test}%'):
+        fig = make_subplots(rows=2, cols=2, specs=[[{},{}], [{},{"secondary_y": True}]],
+                subplot_titles=(f'Probability of overfitting: {pbo_test} %', 'Performance degradation', 'Histogram of Returns', 'Stochastic dominance'))
+        # plot Logits at row=1,col=1
+        fig.add_trace(go.Histogram(x = results['logits'], showlegend=False), row=1, col=1)
+        fig.update_xaxes(title_text="Logits", row=1, col=1)
+        fig.update_yaxes(title_text="Frequency", row=1, col=1)
+        # plot Performance degradation at row=1,col=2
+        fig.add_trace(go.Scatter(x=results['R_n_star'], y= results['R_bar_n_star'], mode='markers', showlegend=False), row=1, col=2)
+        fig.update_xaxes(title_text="IS Performance", row=1, col=2)
+        fig.update_yaxes(title_text="OOS Performance", row=1, col=2)
+        # plot Stochastic dominance at row=2,col=2
+        fig.add_trace(go.Scatter(x=results['dom_df'].index, y= results['dom_df']['optimized_IS'], name='optimized_IS', showlegend=False), row=2, col=2)
+        fig.add_trace(go.Scatter(x=results['dom_df'].index, y= results['dom_df']['non_optimized_OOS'], name='non_optimized_OOS', showlegend=False), row=2, col=2)
+        fig.add_trace(go.Scatter(x=results['dom_df'].index, y= results['dom_df']['SD2'], name='SD2(right)', showlegend=False), secondary_y=True, row=2, col=2)
+        fig.update_xaxes(title_text="Performance optimized vs non-optimized", row=2, col=2)
+        fig.update_yaxes(title_text="Frequency", secondary_y=False, row=2, col=2)
+        # plot histogram of returns at row=2,col=1
+        fig.add_trace(go.Histogram(x = pf.total_return()*100, showlegend=False), row=2, col=1)
+        fig.add_vline(x = pf[idxmax].total_return()*100, line_color = "firebrick", line_dash = 'dash', 
+                    annotation_text=f"Maximize {RARM}", annotation_font_color='firebrick', annotation_position="top left", row=2, col=1)
+        fig.add_vline(x = (pf.benchmark_value()[idxmax][-1]/pf.benchmark_value()[idxmax][0]-1)*100, 
+                    line_color = "grey", annotation_text="Benchmark", annotation_position="top left", row=2, col=1)
+        fig.update_xaxes(title_text="Returns[%]", row=2, col=1)
+        fig.update_yaxes(title_text="Frequency", row=2, col=1)
+
+        fig.update_layout(title= dict(text="Combinatorially Symmetric Cross-validation", x=0.5, y=0.9),
+                            height=550,)
+        st.plotly_chart(fig, use_container_width=True)
 
 def display_pfbrief(pf, param_dict:dict):
     lastday_return = round(pf.returns()[-1], 2)
