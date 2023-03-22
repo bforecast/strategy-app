@@ -7,27 +7,9 @@ from streamlit_quill import st_quill
 
 from utils.portfolio import Portfolio
 
-
-
-# def input_symbols():
-#     market = st.sidebar.radio("Which Market?", ('US', 'CN', 'HK'), horizontal= True)
-#     if market == 'US':
-#         symbols_string = st.sidebar.text_input("Enter all stock tickers to be included in portfolio separated by commas \
-#                                 WITHOUT spaces, e.g. 'AMZN,NFLX,GOOG,AAPL'", '').upper()
-#         symbols = symbols_string.strip().split(',')
-#     elif market == 'CN':
-#         symbols_string = st.sidebar.text_input("Enter all stock tickers to be included in portfolio separated by commas \
-#                                 WITHOUT spaces, e.g. '601318,000001'", '')
-#         symbols = symbols_string.strip().split(',')
-#     else:
-#         symbols_string = st.sidebar.text_input("Enter all stock tickers to be included in portfolio separated by commas \
-#                                 WITHOUT spaces, e.g. '00700,01171'", '')
-#         symbols = symbols_string.strip().split(',')
-#     return market, symbols
-
-def input_dates():
-    start_date = st.sidebar.date_input("Start date?", date(2018, 1, 1))
-    end_date = st.sidebar.date_input("End date?", date.today())
+def input_dates(by='unique'):
+    start_date = st.sidebar.date_input("Start date?", date(2018, 1, 1), key=by+'_start_date')
+    end_date = st.sidebar.date_input("End date?", date.today(),  key=by+'_end_date')
     start_date = datetime(year=start_date.year, month=start_date.month, day=start_date.day, tzinfo=pytz.utc)
     end_date = datetime(year=end_date.year, month=end_date.month, day=end_date.day, tzinfo=pytz.utc)
     return start_date, end_date
@@ -115,7 +97,6 @@ def show_bar():
 
 
 def input_SymbolsDate() -> dict:
-    # WFO = st.sidebar.slider("Walk-Forward Optimization", min_value=0, max_value=60, help="0 means disable")
     market = st.sidebar.radio("Which Market?", ('US', 'CN', 'HK'), horizontal= True)
     if market == 'US':
         symbols_string = st.sidebar.text_input("Enter all stock tickers to be included in portfolio separated by commas \

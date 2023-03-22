@@ -44,7 +44,7 @@ def load_symbol(symbol:str):
             return None
 
 @cache
-def get_symbolname(symbol:str):
+def get_SymbolName(symbol:str):
         # cursor.execute("SELECT strategy_id, symbol, exchange, name FROM strategy_stock \
         #                     JOIN stock ON stock.id = strategy_stock.stock_id")
         # symbols_df = cursor.fetchall()
@@ -55,3 +55,9 @@ def get_symbolname(symbol:str):
         except Exception as e:
             print(f"Connnecting Database Error: {e}")
             return None
+
+def get_SymbolsName(symbols:list):
+    names = set()
+    for symbol in symbols:
+        names.add(get_SymbolName(symbol))
+    return names

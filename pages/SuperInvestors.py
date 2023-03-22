@@ -126,7 +126,7 @@ def main():
     funds_tickers = ["BRK", "MKL", "GFT", "psc", "LMM", "oaklx", "ic", "DJCO", "TGM",
                     "AM", "aq", "oc", "HC", "SAM", "PI", "DA", "BAUPOST", "FS", "GR"]
     
-    fund_ticker = st.sidebar.selectbox("Select US Funds", funds_tickers, help="data from dataroma.com")
+    fund_ticker = st.sidebar.selectbox("Select US Funds", funds_tickers, help="data from dataroma.com", key='SuperInvestors')
     try:
         fund_data = getData(fund_ticker)
     except ValueError as ve:

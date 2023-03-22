@@ -1,13 +1,13 @@
 import streamlit as st
 
 from utils.component import input_SymbolsDate, check_password, form_SavePortfolio, params_selector
-from utils.db import get_symbolname
+from utils.db import get_SymbolName
 from utils.vbt import display_pfbrief
 
 if check_password():
     symbolsDate_dict = input_SymbolsDate()
     if len(symbolsDate_dict['symbols']) > 0:
-        st.header(f"{get_symbolname(symbolsDate_dict['symbols'][0])} Strategies' comparision board")
+        st.header(f"{get_SymbolName(symbolsDate_dict['symbols'][0])} Strategies' comparision board")
         strategy_list = getattr(__import__(f"vbt_strategy"), 'strategy_list')
         params = params_selector({})
         for strategyname in strategy_list:

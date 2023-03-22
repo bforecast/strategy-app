@@ -7,6 +7,8 @@ import streamlit as st
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots # creating subplots
 
+from utils.db import get_SymbolName
+
 
 
 # RRG functions
@@ -55,7 +57,7 @@ annotation = [
                     showarrow=False,  # 不显示箭头
                     font=dict(size=15, color="purple")),
             ]
-def plot_WholeRRG(rs_ratio_df, symbols):
+def plot_LastRRG(rs_ratio_df, symbols):
     fig = go.Figure()
     for symbol in symbols:
         fig.add_trace(go.Scatter(x=rs_ratio_df[f'{symbol}_rs_ratio'], 
@@ -161,7 +163,7 @@ def plot_AnimateRRG(rs_ratio_df, symbols, tail_length):
         data_dict = {
             "x": list(rs_ratio_df[f'{symbol}_rs_ratio'][-tail_length:]),
             "y": list(rs_ratio_df[f'{symbol}_rs_momentum'][-tail_length: ]),
-            "mode": "lines+markers",
+            "mode": "lines+markers+text",
             "marker": {
                 'symbol': "circle-open-dot",
                 'size': 6,
@@ -169,7 +171,9 @@ def plot_AnimateRRG(rs_ratio_df, symbols, tail_length):
             "line": {
                 'width': 4,
             },
-            "name": symbol
+            "name": symbol,
+            "hovertemplate": '<b>%{hovertext}</b>',
+            "hovertext" : [d.strftime("%Y-%m-%d") for d in rs_ratio_df.index[-tail_length: ]]
         }
         fig_dict["data"].append(data_dict)
         data_dict = {
@@ -181,6 +185,9 @@ def plot_AnimateRRG(rs_ratio_df, symbols, tail_length):
                 'size': 12,
             },
             "text": symbol,
+            "name": symbol,
+            "hovertemplate": '<b>%{hovertext}</b>',
+            "hovertext" : [d.strftime("%Y-%m-%d") for d in rs_ratio_df.index[-1: ]],           
             "showlegend": False
         }
         fig_dict["data"].append(data_dict)
@@ -201,7 +208,9 @@ def plot_AnimateRRG(rs_ratio_df, symbols, tail_length):
                 "line": {
                     'width': 4,
                 },
-                "name": symbol
+                "name": symbol,
+                "hovertemplate": '<b>%{hovertext}</b>',
+                "hovertext" : [d.strftime("%Y-%m-%d") for d in rs_ratio_df.index[i: i+tail_length]]                
             }
             frame["data"].append(data_dict)
             data_dict = {
@@ -213,6 +222,9 @@ def plot_AnimateRRG(rs_ratio_df, symbols, tail_length):
                     'size': 12,
                 },
                 "text": symbol,
+                "name": symbol,
+                "hovertemplate": '<b>%{hovertext}</b>',
+                "hovertext" : [d.strftime("%Y-%m-%d") for d in rs_ratio_df.index[i+tail_length-1:i+tail_length]],           
                 "showlegend": False
             }
             frame["data"].append(data_dict)
@@ -284,14 +296,17 @@ def plot_RRG(symbol_benchmark, stocks_df):
         if s != symbol_benchmark:
             symbols_target.append(s)
     with col1:
-        symbols = st.multiselect(label ='symbols', options = symbols_target, default = symbols_target)
+        sSel = st.multiselect("Please select symbols:", symbols_target, 
+                                format_func=lambda x: x+'('+get_SymbolName(x)+')', 
+                                default = symbols_target)
+        # symbols = st.multiselect(label ='symbols', options = symbols_target, default = symbols_target)
     with col2:
         period = st.selectbox('周期', ['D', 'W', 'M'], 1)
     with col3:
         window = st.selectbox('Window', [1, 5, 10, 12, 20], 2)    
     with col4:
-        tail_length = st.slider('尾线长度', 1, 20, 6)
+        tail_length = st.slider('尾线长度', 1, 60, 10)
 
     stocks_df = stocks_df.resample(period).ffill()
-    rs_ratio_df = rs_ratio(stocks_df[symbols], stocks_df[symbol_benchmark], window)
-    plot_AnimateRRG(rs_ratio_df, symbols, tail_length)
+    rs_ratio_df = rs_ratio(stocks_df[sSel], stocks_df[symbol_benchmark], window)
+    plot_AnimateRRG(rs_ratio_df, sSel, tail_length)

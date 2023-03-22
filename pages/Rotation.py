@@ -20,9 +20,11 @@ groups_dict ={
     'US' : {
         'benchmark' : 'SPY', 
         'group' : {
-                'Sector': ['XLB', 'XLC', 'XLE', 'XLF', 'XLI', 'XLK', 'XLP', 'XLRE', 'XLU', 'XLV', 'XLY'],
-                'market': ['IVV', 'IWM', 'QQQ', 'DIA'],
-                'country': ['IVV', 'MCHI', 'EWJ', 'EWH', 'EWU', 'EWG']
+                'SPDR': ['XLB', 'XLC', 'XLE', 'XLF', 'XLI', 'XLK', 'XLP', 'XLRE', 'XLU', 'XLV', 'XLY'],
+                'EW_Sector': ['RCD', 'RYH', 'RYT', 'RGI', 'RHS', 'RTM', 'RYF', 'RSP', 'RYE', 'RYU', 'EQAL', 'EWRE', 'QQEW', 'TLT', 'EMLC', 'EEM' ],
+                # 'Feat' : ['TLT', 'EQAL', 'RYF', 'EMLC', 'EWRE', 'RTM', 'RYE', 'EEM', 'RYT', 'RYU', 'RHS'],
+                'Market': ['IVV', 'IWM', 'QQQ', 'DIA'],
+                'Country': ['IVV', 'MCHI', 'EWJ', 'EWH', 'EWU', 'EWG'],
             }
         },
     'CN' : {

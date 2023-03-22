@@ -23,7 +23,7 @@ from utils.component import check_password, params_selector
 from utils.portfolio import Portfolio, selectpf_bySymbols
 from vbt_strategy.PairTrade import pairtrade_pfs
 from pages.Strategy import check_params
-from utils.db import get_symbolname
+from utils.db import get_SymbolName
 from utils.vbt import display_pfbrief
 
 import config
@@ -91,7 +91,7 @@ def show_PortfolioTable(portfolio_df):
         st.session_state['symbolsSel'] = symbols
 
     sSel = st.multiselect("Please select symbols:", symbols, 
-                                format_func=lambda x: get_symbolname(x)+x,
+                                format_func=lambda x: get_SymbolName(x)+x,
                                 help='empty means all')
     if st.session_state['symbolsSel'] == sSel:
         update_bokeh = False

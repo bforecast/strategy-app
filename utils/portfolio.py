@@ -10,7 +10,7 @@ import config
 import warnings
 import vectorbt as vbt
 
-from utils.db import init_connection, get_symbolname
+from utils.db import init_connection, get_SymbolName
 
 warnings.filterwarnings('ignore')
 # Initialize connection.
@@ -222,7 +222,7 @@ class Portfolio(object):
                     symbol_str = self.df.loc[i,'symbols']
                     if type(row['Column']) == tuple and type(row['Column'][-1]) == str:
                         symbol_str = row['Column'][-1]
-                    records.append(row['Side'] + ' ' + symbol_str + f"({get_symbolname(symbol_str)})")
+                    records.append(row['Side'] + ' ' + symbol_str + f"({get_SymbolName(symbol_str)})")
                 result_df = result_df.append({"name": self.df.loc[i,'name'],
                                 "records": ', '.join(records)}, ignore_index=True)
           except ValueError as ve:
