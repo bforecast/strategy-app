@@ -40,7 +40,9 @@ def show_pffromfile(vbtpf):
     pf = vbt.Portfolio.loads(vbtpf)
     plot_pf(pf)
 
-def plot_pf(pf, name= "", select=True):
+def plot_pf(pf, name= "", select=True, bm_symbol=None, bm_price=None):
+    ## select control wheather display the subplots multiselect box
+    ## bm_symbol is benchmark symbol, bm_price is benchmark's daily prices
     # 1.initialize
     vbt.settings.array_wrapper['freq'] = 'days'
     vbt.settings.returns['year_freq'] = '252 days'
@@ -57,7 +59,16 @@ def plot_pf(pf, name= "", select=True):
                     ['cum_returns','orders', 'trade_pnl', 'drawdowns'], key='multiselect_'+str(pf.total_return()))
     if len(subplots) > 0:
         fig = pf.plot(subplots=subplots, )
+        # st.plotly_chart(fig, use_container_width=True)
+        if bm_symbol:
+            fig.add_trace(go.Scatter(
+                                    x = bm_price.index,
+                                    y = bm_price.vbt.to_returns().cumsum(axis=0) + 1, 
+                                    name = bm_symbol,
+                                    line_color = "red"
+                                    ))
         st.plotly_chart(fig, use_container_width=True)
+
         #save fig to the buffer
         buffer.write("<h4>Portfolio PLot</h2>")
         fig.write_html(buffer, include_plotlyjs='cdn')
@@ -65,7 +76,12 @@ def plot_pf(pf, name= "", select=True):
     # 3.display the stats and recodes
     tab1, tab2 = st.tabs(["Return's stats", "Orders' records"])
     with tab1:
-        st.text(pf.returns_stats()) 
+        if bm_symbol:
+            st.text(f'Benchmark is {bm_symbol}')
+            st.text(pf.returns_stats(benchmark_rets=bm_price.vbt.to_returns())) 
+        else:
+            st.text(pf.returns_stats())
+            
     with tab2:
         st.text(pf.orders.records_readable.sort_values(by=['Timestamp'])) 
 
