@@ -2,13 +2,18 @@
 # for reference: https://school.stockcharts.com/doku.php?id=chart_analysis:rrg_charts#jdk_rs-ratio
 
 import pandas as pd
+import numpy as  np
 import streamlit as st
+import vectorbt as vbt
+from time import time
+from numba import njit
+
 
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots # creating subplots
 
 from utils.db import get_SymbolName
-
+from utils.vbt import init_vbtsetting
 
 
 # RRG functions
@@ -96,7 +101,7 @@ def plot_LastRRG(rs_ratio_df, symbols):
     draw_canvas(fig)
     st.plotly_chart(fig, use_container_width=True)
 
-def plot_AnimateRRG(rs_ratio_df, symbols, tail_length):
+def plot_AnimateRRG(rs_ratio_df, symbols, tail_length, sweetpoint=None):
     # make frame figure
     fig_dict = {
         "data": [],
@@ -247,6 +252,16 @@ def plot_AnimateRRG(rs_ratio_df, symbols, tail_length):
 
     fig = go.Figure(fig_dict)
     draw_canvas(fig)
+    if sweetpoint:
+        fig.add_shape({
+                        'type':'rect', 
+                        'x0': sweetpoint[0], 'x1': 105, 
+                        'y0': sweetpoint[1], 'y1': 105, 
+                    }, 
+                    line={'width': 1},
+                    # text = 'Sweet Area',
+                    fillcolor='goldenrod', opacity=.5)
+
     st.plotly_chart(fig, use_container_width=True)
 
 def draw_canvas(fig):
@@ -310,3 +325,212 @@ def plot_RRG(symbol_benchmark, stocks_df):
     stocks_df = stocks_df.resample(period).ffill()
     rs_ratio_df = rs_ratio(stocks_df[sSel], stocks_df[symbol_benchmark], window)
     plot_AnimateRRG(rs_ratio_df, sSel, tail_length)
+
+# def RRG_Strategy(symbol_benchmark, stocks_df):
+#     col1, col2, col3, col4 =  st.columns([5, 1, 1, 1])
+#     symbols_target = []
+#     for s in stocks_df.columns:
+#         if s != symbol_benchmark:
+#             symbols_target.append(s)
+#     with col1:
+#         sSel = st.multiselect("Please select symbols:", symbols_target, 
+#                                 format_func=lambda x: x+'('+get_SymbolName(x)+')', 
+#                                 default = symbols_target)
+#         # symbols = st.multiselect(label ='symbols', options = symbols_target, default = symbols_target)
+#     with col2:
+#         period = st.selectbox('周期', ['D', 'W', 'M'], 1)
+#     with col3:
+#         window = st.selectbox('Window', [1, 5, 10, 12, 20, 50], 2)    
+#     with col4:
+#         tail_length = st.slider('尾线长度', 1, 60, 10)
+
+#     resample_df = stocks_df.resample(period).ffill()
+#     rs_ratio_df = rs_ratio(resample_df[sSel], resample_df[symbol_benchmark], window)
+#     plot_AnimateRRG(rs_ratio_df, sSel, tail_length)
+#     rs_ratio_df = rs_ratio_df.resample('D').ffill()
+
+#     init_vbtsetting()
+#     size = pd.DataFrame.vbt.empty_like(stocks_df[sSel], fill_value=0)
+#     for s in sSel:
+#         size[s] = rs_ratio_df.apply(ratio_filter, args=(s,), axis=1)
+#     size = size.div(size.sum(axis=1), axis=0)
+#     pf_kwargs = dict(fees=0.001, slippage=0.001, freq='1D')
+#     pf = vbt.Portfolio.from_orders(
+#                 stocks_df[sSel], 
+#                 size, 
+#                 size_type='targetpercent', 
+#                 group_by=True,  # group of two columns
+#                 cash_sharing=True,  # share capital between columns
+#                 **pf_kwargs,
+#             )
+#     return pf
+
+def RRG_Strategy(symbol_benchmark, stocks_df):
+    stocks_df[stocks_df<0] = np.nan
+    symbols_target = []
+    for s in stocks_df.columns:
+        if s != symbol_benchmark:
+            symbols_target.append(s)
+
+    sSel = st.multiselect("Please select symbols:", symbols_target, 
+                            format_func=lambda x: get_SymbolName(x)+'('+x+')', 
+                            default = symbols_target)
+    # Build param grid
+    rs_ratio_mins = [98, 98.5, 99, 99.5, 100, 100.5, 101, 101.5, 102]
+    rs_momentum_mins = [98, 98.5, 99, 99.5, 100, 100.5, 101, 101.5, 102]
+    windows = [60, 100, 150, 200, 225, 250, 275, 300]
+
+    param_product = vbt.utils.params.create_param_product([rs_ratio_mins, rs_momentum_mins, windows])
+    param_tuples = list(zip(*param_product))
+    param_columns = pd.MultiIndex.from_tuples(param_tuples, names=['rs_ratio', 'rs_momentum', 'rs_window'])
+    RRG_indicator = get_RRGInd().run(prices=stocks_df[sSel], bm_price=stocks_df[symbol_benchmark], ratio=rs_ratio_mins, momentum=rs_momentum_mins, window=windows, param_product=True)
+    sizes = RRG_indicator.size.shift(periods=1)
+    init_vbtsetting()
+    pf_kwargs = dict(fees=0.001, slippage=0.001, freq='1D')
+    pf = vbt.Portfolio.from_orders(
+                stocks_df[sSel].vbt.tile(len(param_columns), keys=param_columns), 
+                sizes, 
+                size_type='targetpercent', 
+                group_by=param_columns.names,  # group of two columns
+                cash_sharing=True,  # share capital between columns
+                **pf_kwargs,
+            )
+    if not isinstance(pf.total_return(), np.float64):
+        idxmax = pf.total_return().idxmax()
+        st.write(f"The Max Total_return is {param_columns.names}:{idxmax}")
+        pf = pf[idxmax]
+        rs_df = pd.DataFrame()
+        for s in sSel:
+            rs_df[s+'_rs_ratio'] = RRG_indicator.rs_ratio[idxmax][s]
+            rs_df[s+'_rs_momentum'] = RRG_indicator.rs_momentum[idxmax][s]
+        # plot_RatioMomentum(stocks_df, rs_df, sSel[0:1], symbol_benchmark)
+        rs_df.dropna(inplace=True)
+        plot_AnimateRRG(rs_df, sSel, 6, idxmax)
+    return pf
+
+def ratio_filter(x, s):
+        # if x[s+'_rs_ratio']>98 and x[s+'_rs_momentum']>100.5:
+        if x[s+'_rs_momentum']>100.5:
+            return 100
+        else:
+            return 0
+
+@njit
+def rolling_logret_zscore_nb(a, b, window):
+    """Calculate the log return spread."""
+    spread = np.full_like(a, np.nan, dtype=np.float_)
+    spread[1:] = np.log(a[1:] / a[:-1]) - np.log(b[1:] / b[:-1])
+    zscore = np.full_like(a, np.nan, dtype=np.float_)
+    for i in range(a.shape[0]):
+        from_i = max(0, i + 1 - window)
+        to_i = i + 1
+        if i < window - 1:
+            continue
+        spread_mean = np.mean(spread[from_i:to_i])
+        spread_std = np.std(spread[from_i:to_i])
+        zscore[i] = (spread[i] - spread_mean) / spread_std
+    return spread, zscore
+
+def apply_rrg_nb(prices, bm_price, ratio, momentum, window):
+    rs_ratio, rs_momentum = cal_RRG(prices, bm_price, window)
+
+    size = np.zeros(prices.shape, dtype=np.float_)
+    for i in range(rs_momentum.shape[0]):
+        mod = i % 5
+        for j in range(rs_momentum.shape[1]):
+            if mod == 0:
+                size[i,j] =  100 if rs_momentum[i,j]>momentum and rs_ratio[i,j]>ratio else 0
+            else:
+                size[i,j] = np.nan#size[i-mod,j]
+    size = np.divide(size.T, np.sum(size, axis=1)).T
+    # size[np.isnan(size)] = 0
+
+    return rs_ratio, rs_momentum, size
+
+def get_RRGInd():
+    MomInd = vbt.IndicatorFactory(
+        class_name = 'RS',
+        input_names = ['prices', 'bm_price'],
+        param_names = ['ratio', 'momentum', 'window'],
+        output_names = ['rs_ratio', 'rs_momentum', 'size']
+    ).from_apply_func(apply_rrg_nb)
+    
+    return MomInd
+
+@njit
+def np_RollingMean(series, window_size=10):
+    # Initialize an empty list to store moving averages
+    moving_averages = np.full(series.shape, np.nan, dtype=np.float_)
+
+    for i  in range(series.shape[0] - window_size + 1):
+    
+        # Calculate the average of current window
+        window_average = np.sum(series[i:i+window_size,],axis=0) / window_size
+        
+        # Store the average of current
+        # window in moving average list
+        moving_averages[i+window_size-1,:] = window_average
+    return moving_averages
+    
+
+def np_RollingZscore(series, window_size=10):
+    """
+    Calculates the rolling z-score of a 2D series in numpy.
+    
+    Args:
+    series (numpy.ndarray): 2D series to calculate rolling z-score on.
+    window_size (int): Size of the rolling window.
+    
+    Returns:
+    numpy.ndarray: Rolling z-score of the input series.
+    """
+    
+    # Calculate the rolling z-score using the mean and standard deviation
+    rolling_zscore = np.full(series.shape, np.nan, dtype=np.float_)
+    for i in range(window_size-1, series.shape[0]):
+        window = series[i-window_size+1:i+1, :]
+        window_mean = np.mean(window, axis=0, keepdims=True)
+        window_std = np.std(window, axis=0, keepdims=True)
+        window_zscore = (window[-1, :] - window_mean) / window_std
+        rolling_zscore[i, :] = window_zscore
+    
+    return rolling_zscore
+
+@st.cache_data(ttl = 86400)
+def cal_RRG(prices, bm_price, window=100):
+    rs = prices/bm_price * 100
+    Resample = 20
+    # rs = np_RollingMean(rs, Resample)
+    rs_ratio = np_RollingZscore(np_RollingMean(rs, Resample), window) + 100
+    rs_diff = np.full(prices.shape, np.nan, dtype=np.float_)
+    # rs_diff[1:,] = np.diff(rs_ratio, axis=0)/rs_ratio[:-1,]*100
+    # rs_diff = rs_diff.rolling(window).mean()    # 顺滑
+    rs_diff[1:,] = np.diff(rs, axis=0)/rs[:-1,]*100
+    rs_diff = np_RollingMean(rs_diff, 20)
+    # rs_diff[Resample:,] = np.diff(rs, n=Resample, axis=0)/rs[:-Resample,]*100
+    rs_momentum = np_RollingZscore(rs_diff, window) + 100
+    return rs_ratio, rs_momentum
+
+def calculate_momentum(prices, benchmark_price, window):
+    """
+    Calculates momentum for multiple tickers given their prices and a benchmark price.
+    
+    Args:
+    prices (numpy array): array of prices for multiple tickers, shape (num_prices, num_tickers)
+    benchmark_price (numpy array): array of benchmark prices, shape (num_prices,)
+    window (int): number of prices to use in momentum calculation
+    
+    Returns:
+    momentum (numpy array): array of momentum values for each ticker, shape (num_tickers,)
+    """
+    # calculate returns for each ticker and the benchmark
+    returns = np.log(prices[1:]) - np.log(prices[:-1])
+    benchmark_returns = np.log(benchmark_price[1:]) - np.log(benchmark_price[:-1])
+    # calculate momentum for each ticker
+    momentum = np.full_like(prices, np.nan, dtype=np.float_)
+    for i in range(window-1, prices.shape[0]-1):
+        momentum[i] = np.mean(returns[i-window:i], axis=0) - np.mean(benchmark_returns[i-window:i], axis=0)
+    # Normalized the results
+    momentum = np.divide(np.subtract(momentum, np.nanmean(momentum, axis=0)), np.nanstd(momentum, axis=0))
+    return momentum
+

@@ -15,9 +15,48 @@ from utils.riskfolio import get_pfOpMS, FactorExposure, plot_AssetsClusters
 from utils.portfolio import Portfolio
 from utils.vbt import get_pfByWeight, get_pfByMaxReturn, plot_pf
 from utils.processing import get_stocks
-from utils.rrg import plot_RRG
+from utils.rrg import plot_RRG, RRG_Strategy
 
+@st.cache_data(ttl = 86400)
+def getETFData(holding_ticker):
+    # Data Extraction
+    # We obtain the HTML from the corresponding fund in Dataroma.
 
+    html = requests.get(
+        "https://etfdb.com/etf/" + holding_ticker + "/#holdings", headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-User": "?1",
+            "Cache-Control": "max-age=0"
+        }).content
+
+    # Non-table Data Parsing
+    soup = BeautifulSoup(html, "html.parser")
+    name = soup.find('title').text
+    portfolio_date = soup.find('time',class_="date-modified").text
+
+    # Table Data Parsing
+    df_list = pd.read_html(html)
+    for df in df_list:
+        if('Symbol Symbol' in df.columns):
+            df = df.head(15)
+            break
+
+    # Column name corrections.
+    df = df.rename(columns={"Symbol Symbol": "Ticker"})
+    df = df.rename(columns={"Holding Holding": "Stock"})
+    df = df.rename(columns={"% Assets % Assets": "Portfolio (%)"})
+
+    df['Ticker'] = df['Ticker'].apply(lambda x: x.replace('.', '_'))
+    df["Portfolio (%)"] = df["Portfolio (%)"].apply(lambda x: pd.to_numeric(x.split("%")[0]))
+    df.index = df['Ticker']
+
+    return [name, None, portfolio_date, df]
 # @st.cache_data()
 def get_bobmaxsr(_symbolsDate_dict:dict, fund_desc:str = ""):
     '''
@@ -108,7 +147,7 @@ def show_FactorExposure(symbolsDate_dict, pf, stocks_df):
             "XLY" : "可选消费品"
         }
     }
-    factors_sel = st.selectbox("**因子暴露分析(Factor Exposures)**", factors_dict.keys())
+    factors_sel = st.selectbox("**因子暴露分析(Factor Exposures)**", factors_dict.keys(), label_visibility='collapsed')
     factors_sel = factors_dict[factors_sel]
     if isinstance(factors_sel, dict):
         st.write('、'.join(k+'('+v+')' for v,k in factors_sel.items()))
@@ -120,46 +159,78 @@ def show_FactorExposure(symbolsDate_dict, pf, stocks_df):
         st.table(FactorExposure(main_df, factors_df).style.format("{:.4f}").bar(color=['#ef553b','#00cc96'],align='mid', axis=1))
         st.line_chart(pd.concat([portfolio_df, factors_df], axis=1))
 
-def main():
+def run():
     # 1. display selected fund's information
     # List of funds to analyze
-    funds_tickers = ["BRK", "MKL", "GFT", "psc", "LMM", "oaklx", "ic", "DJCO", "TGM",
+    fund_sources = ['dataroma.com', 'etfdb.com']
+    fund_source = st.sidebar.selectbox("Select Funds' Source", fund_sources)
+    st.write(f"**{fund_source}**")
+    if fund_source == fund_sources[0]:
+        funds_tickers = ["BRK", "MKL", "GFT", "psc", "LMM", "oaklx", "ic", "DJCO", "TGM",
                     "AM", "aq", "oc", "HC", "SAM", "PI", "DA", "BAUPOST", "FS", "GR"]
-    
-    fund_ticker = st.sidebar.selectbox("Select US Funds", funds_tickers, help="data from dataroma.com", key='SuperInvestors')
-    try:
-        fund_data = getData(fund_ticker)
-    except ValueError as ve:
-        st.write(f"dataroma-getData error: {ve}")
-        return
+        fund_ticker = st.selectbox(f"Select fund from {fund_source}", funds_tickers)        
+        try:
+            fund_data = getData(fund_ticker)
+        except ValueError as ve:
+            st.write(f"Get {fund_source} data error: {ve}")
+            return
+    else:
+        funds_tickers = ["QQQ", "SPY", "XLB", "XLC", 
+                     "XLE", "XLF", "XLI", "XLK", 
+                     "XLP", "XLRE", "XLU", "XLV", 
+                     "XLY", "XHB", "SDY", "SMH", 
+                     "ARKK", "ARKW", "ARKQ", 
+                     "ARKF", "ARKG", "ARKX", 
+                     "XME", "XPH", "KBE"]
+        fund_ticker = st.selectbox(f"Select fund from {fund_source}", funds_tickers)        
+        try:
+            fund_data = getETFData(fund_ticker)
+        except ValueError as ve:
+            st.write(f"Get {fund_source}data error: {ve}")
+            return
         
     # Fund positions
     df = fund_data[-1]
     st.subheader(fund_data[0])
     col1, col2, col3, col4 = st.columns(4)
-    with col1:
-            st.write('**Period:**')
+    if fund_source == fund_sources[0]:
+        with col1:
+                st.write('**Period:**')
+                st.write('**Portfolio_date:**')
+                st.write('**Total value:**')
+        with col2:
+                st.write(fund_data[1])
+                st.write(fund_data[2])
+                st.write(humanize.intword(df["Value"].sum()))
+        with col3:
+                st.write('**Num_of_positions:**')
+                st.write('**Top 10 holdings(%):**')
+                st.write('**Price Change (%)**')
+        with col4:
+                st.write(df["Stock"].count())
+                st.write(round(df["Portfolio (%)"].iloc[0:10].sum(),2))
+                st.write(round(df["Reported Price Change (%)"].mean(), 2))
+
+        with st.expander("Portfolio Table"):
+            st.dataframe(df[['Stock', 'Portfolio (%)', 'Recent Activity', 'Reported Price', 'CurrentPrice', 'Reported Price Change (%)']]
+                            .style.format({'Portfolio (%)':'{0:,.2f}', 'Reported Price Change (%)':'{0:,.3f}'})
+                            .background_gradient(cmap='YlGn'), 
+                        )
+    else:
+        with col1:
             st.write('**Portfolio_date:**')
-            st.write('**Total value:**')
-    with col2:
-            st.write(fund_data[1])
-            st.write(fund_data[2])
-            st.write(humanize.intword(df["Value"].sum()))
-    with col3:
-            st.write('**Num_of_positions:**')
-            st.write('**Top 10 holdings(%):**')
-            st.write('**Price Change (%)**')
-    with col4:
-            st.write(df["Stock"].count())
-            st.write(round(df["Portfolio (%)"].iloc[0:10].sum(),2))
-            st.write(round(df["Reported Price Change (%)"].mean(), 2))
+        with col2:
+                st.write(fund_data[2])
+        with col3:
+                st.write('**Top 10 holdings(%):**')
+        with col4:
+                st.write(round(df["Portfolio (%)"].iloc[0:10].sum(),2))
 
-    with st.expander("Portfolio Table"):
-        st.dataframe(df[['Stock', 'Portfolio (%)', 'Recent Activity', 'Reported Price', 'CurrentPrice', 'Reported Price Change (%)']]
-                        .style.format({'Portfolio (%)':'{0:,.2f}', 'Reported Price Change (%)':'{0:,.3f}'})
-                        .background_gradient(cmap='YlGn'), 
-                    )
-
+        with st.expander("Portfolio Table (Top 15)"):
+            st.dataframe(df[['Stock', 'Portfolio (%)']]
+                            .style.format({'Portfolio (%)':'{0:,.2f}'})
+                            .background_gradient(cmap='YlGn'), 
+                        )
 
     # 2.select optimized portfolio strategies.
     start_date, end_date = input_dates()
@@ -185,20 +256,27 @@ def main():
             weights.append(df.loc[symbol,'Portfolio (%)'])
         weights = weights / sum(weights)
         pf = get_pfByWeight(stocks_df, weights)
+        st.write('----')
+        st.write("**组合回报表现(Porfolio's Performance)**")
         plot_pf(pf, select=False, name=f"{fund_ticker}-Original Weights")
 
         # 2.1.3 calculate the factors effect of Original fund portfolio.
+        st.write('----')
+        st.write("**因子暴露分析(Factor Exposures)**")        
+
         show_FactorExposure(symbolsDate_dict, pf, stocks_df)
         # 2.1.4 Assets Clusters of Original fund portfolio.
-        st.write("**资产层次聚类(Assets Clusters)：**")
+        st.write("**资产层次聚类(Assets Clusters)**")
         with st.expander("The codependence or similarity matrix: pearson; Linkage method of hierarchical clustering: ward"):
             plot_AssetsClusters(stocks_df)
         # 2.1.5 plot RRG
-        st.write("**相对轮动(RRG):**")
-        symbol_benchmark = 'SPY'
-        symbolsDate_dict['symbols'] += [symbol_benchmark]
-        stocks_df = get_stocks(symbolsDate_dict,'close')
-        plot_RRG(symbol_benchmark, stocks_df)
+        st.write("**相对轮动图策略(RRG)**")
+        with st.expander("根据相对轮动图的rs_ratio、rs_momentum的值对于生成轮动策略，计算最优回报解"):
+            symbol_benchmark = 'SPY'
+            symbolsDate_dict['symbols'] += [symbol_benchmark]
+            stocks_df = get_stocks(symbolsDate_dict,'close')
+            pf = RRG_Strategy(symbol_benchmark, stocks_df)
+            plot_pf(pf, bm_symbol=symbol_benchmark, bm_price=stocks_df[symbol_benchmark], select=True)
             
     elif subpage == 'Max Sharpe Weights':
         # 2.2.1 calculate the optimized max sharpe ratio's portfolio.
@@ -264,4 +342,4 @@ def main():
         # plot_pf(pf, select=False, name=f"{fund_ticker}-Top10 Stocks max sharpe -Max return Weights")
 
 if check_password():
-    main()
+    run()

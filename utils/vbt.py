@@ -43,6 +43,9 @@ def show_pffromfile(vbtpf):
 def plot_pf(pf, name= "", select=True, bm_symbol=None, bm_price=None):
     ## select control wheather display the subplots multiselect box
     ## bm_symbol is benchmark symbol, bm_price is benchmark's daily prices
+    if len(pf.orders.records_readable) == 0:
+        st.warning("No records in Portfolio.", icon= "⚠️")
+        return
     # 1.initialize
     vbt.settings.array_wrapper['freq'] = 'days'
     vbt.settings.returns['year_freq'] = '252 days'
@@ -56,7 +59,7 @@ def plot_pf(pf, name= "", select=True, bm_symbol=None, bm_price=None):
     subplots = ['cum_returns','orders', 'trade_pnl', 'drawdowns']
     if select:
         subplots = st.multiselect("Select subplots:", Portfolio.subplots.keys(),
-                    ['cum_returns','orders', 'trade_pnl', 'drawdowns'], key='multiselect_'+str(pf.total_return()))
+                    ['cum_returns','orders', 'trade_pnl', 'drawdowns'], key='multiselect_'+name)
     if len(subplots) > 0:
         fig = pf.plot(subplots=subplots, )
         # st.plotly_chart(fig, use_container_width=True)
