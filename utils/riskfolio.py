@@ -5,7 +5,6 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 from datetime import datetime
 import riskfolio as rp
-import riskfolio.PlotFunctions as plf
 import vectorbt as vbt
 
 from utils.processing import AKData
@@ -36,7 +35,7 @@ def report(
         gridspec_kw={"height_ratios": [2, 1, 1.5, 1, 1, 1]},
     )
 
-    ax[0] = plf.plot_table(
+    ax[0] = rp.plot_table(
         returns,
         w,
         MAR=rf,
@@ -47,7 +46,7 @@ def report(
         ax=ax[0],
     )
 
-    ax[2] = plf.plot_pie(
+    ax[2] = rp.plot_pie(
         w=w,
         title="Portfolio Composition",
         others=others,
@@ -56,7 +55,7 @@ def report(
         ax=ax[2],
     )
 
-    ax[3] = plf.plot_risk_con(
+    ax[3] = rp.plot_risk_con(
         w=w,
         cov=cov,
         returns=returns,
@@ -67,9 +66,9 @@ def report(
         ax=ax[3],
     )
 
-    ax[4] = plf.plot_hist(returns=returns, w=w, alpha=alpha, bins=bins, ax=ax[4])
+    ax[4] = rp.plot_hist(returns=returns, w=w, alpha=alpha, bins=bins, ax=ax[4])
 
-    ax[[1, 5]] = plf.plot_drawdown(nav=nav, w=w, alpha=alpha, ax=ax[[1, 5]])
+    ax[[1, 5]] = rp.plot_drawdown(nav=nav, w=w, alpha=alpha, ax=ax[[1, 5]])
 
     year = str(datetime.now().year)
 

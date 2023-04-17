@@ -9,11 +9,6 @@ import streamlit as st
 # st.set_page_config(initial_sidebar_state='collapsed',)
 
 import vectorbt as vbt
-import qlib
-from qlib.config import REG_CN
-from qlib.tests.data import GetData
-
-
 from bokeh.models import ColumnDataSource, CustomJS, DateFormatter, NumberFormatter
 from bokeh.models import DataTable, TableColumn
 from streamlit_bokeh_events import streamlit_bokeh_events

@@ -12,3 +12,4 @@ statsmodels
 streamlit_quill
 riskfolio-lib
 humanize
+seaborn
