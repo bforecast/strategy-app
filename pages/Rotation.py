@@ -58,7 +58,7 @@ groups_dict ={
 
 symbolsDate_dict = input_SymbolsDate()
 symbol_benchmark = groups_dict[symbolsDate_dict['market']]['benchmark']
-if len(symbolsDate_dict['symbols']) == 0:
+if len(symbolsDate_dict['symbols']) < 2:
     group_sel = st.selectbox("Please select symbols' group", groups_dict[symbolsDate_dict['market']]['group'].keys())
     symbolsDate_dict['symbols'] =  groups_dict[symbolsDate_dict['market']]['group'][group_sel]
 

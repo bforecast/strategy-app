@@ -59,7 +59,7 @@ def plot_pf(pf, name= "", select=True, bm_symbol=None, bm_price=None):
     subplots = ['cum_returns','orders', 'trade_pnl', 'drawdowns']
     if select:
         subplots = st.multiselect("Select subplots:", Portfolio.subplots.keys(),
-                    ['cum_returns','orders', 'trade_pnl', 'drawdowns'], key='multiselect_'+name)
+                    ['cum_returns','orders', 'trade_pnl', 'drawdowns', 'cash'], key='multiselect_'+name)
     if len(subplots) > 0:
         fig = pf.plot(subplots=subplots, )
         # st.plotly_chart(fig, use_container_width=True)
@@ -95,17 +95,17 @@ def plot_pf(pf, name= "", select=True, bm_symbol=None, bm_price=None):
             result = ''
             if type(column)==str:
                 result = column  # 'APPL'
-            elif type(column[-1])==str:
+            elif type(column)==tuple and type(column[-1])==str:
                 result = column[-1]  # (10, 5, 'APPL')
             else:
-                result =name    # name = 'APPL
+                result = name.split('_')[-1]    # name = 'APPL
             return result
         
         records_df['Ticker'] = records_df.apply(find_ticker, axis=1)
         records_df = records_df[['Date', 'Ticker', 'Size', 'Price', 'Fees', 'Amount', 'Side']]
         records_df.set_index('Date', inplace=True)
         records_df.sort_index(inplace=True)
-        st.write(records_df) 
+        st.write(records_df.style.format({'Size':'{0:,.2f}', 'Price':'{0:,.2f}', 'Fees':'{0:,.4f}', 'Amount':'{0:,.2f}'}))
 
     # 4. save the stats and records to the html, and download    
     buffer.write("<style>table {text-align: right;}table thead th {text-align: center;}</style>")

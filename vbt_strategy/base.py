@@ -68,7 +68,7 @@ class BaseStrategy(object):
         if True:
             if self.run(calledby='add'):
                 if self.output_bool:
-                    plot_pf(self.pf, name=self.stock_dfs[0][0])
+                    plot_pf(self.pf, name=self._name+'_'+self.stock_dfs[0][0])
                 return True
             else:
                 return False
