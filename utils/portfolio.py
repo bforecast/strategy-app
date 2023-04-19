@@ -17,11 +17,11 @@ warnings.filterwarnings('ignore')
 connection, cursor = init_connection()
 
 def selectpf_bySymbols(df, symbols:list):
-        ids = set()
+        ids = []
         for i, row in df.iterrows():
             for s in row['symbols'].split(','):
                 if s in symbols:
-                    ids.add(i)
+                    ids.append(i)
         return df.loc[ids,:]
 
 class Portfolio(object):

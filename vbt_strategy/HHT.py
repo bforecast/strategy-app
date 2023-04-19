@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 import vectorbt as vbt
 from PyEMD import EEMD, CEEMDAN, EMD
-from vmdpy import VMD
+# from vmdpy import VMD
 
 from plotly.subplots import make_subplots # creating subplots
 import plotly.graph_objects as go
@@ -211,24 +211,24 @@ def cal_CEEMDAN(signal):
     imfs = CEEMDAN().ceemdan(np_signal)
     return imfs
 
-def cal_VMD(signal):
-    np_signal=np.array(signal)
+# def cal_VMD(signal):
+#     np_signal=np.array(signal)
 
-        #. some sample parameters for VMD  
-    alpha = 1000       # moderate bandwidth constraint  
-    tau = 0.            # noise-tolerance (no strict fidelity enforcement)  
-    K = 10              # 3 modes  
-    DC = 0             # no DC part imposed  
-    init = 1           # initialize omegas uniformly  
-    tol = 1e-7  
+#         #. some sample parameters for VMD  
+#     alpha = 1000       # moderate bandwidth constraint  
+#     tau = 0.            # noise-tolerance (no strict fidelity enforcement)  
+#     K = 10              # 3 modes  
+#     DC = 0             # no DC part imposed  
+#     init = 1           # initialize omegas uniformly  
+#     tol = 1e-7  
 
 
-    #. Run VMD 
-    u, u_hat, omega = VMD(np_signal, alpha, tau, K, DC, init, tol)
-    imfs = u.copy()
-    for i, imf in enumerate(u):
-        imfs[u.shape[0]-i-1] = imf
-    return imfs
+#     #. Run VMD 
+#     u, u_hat, omega = VMD(np_signal, alpha, tau, K, DC, init, tol)
+#     imfs = u.copy()
+#     for i, imf in enumerate(u):
+#         imfs[u.shape[0]-i-1] = imf
+#     return imfs
 
 class HHTStrategy(BaseStrategy):
     '''HHT strategy'''

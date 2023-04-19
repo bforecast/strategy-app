@@ -68,5 +68,5 @@ stocks_df = get_stocks(symbolsDate_dict,'close')
 # st.write(pf.stats())
 
 pf = RRG_Strategy(symbol_benchmark, stocks_df)
-plot_pf(pf, bm_symbol=symbol_benchmark, bm_price=stocks_df[symbol_benchmark], select=True)
+plot_pf(pf, name= group_sel+' RRG Strategy', bm_symbol=symbol_benchmark, bm_price=stocks_df[symbol_benchmark], select=True)
 

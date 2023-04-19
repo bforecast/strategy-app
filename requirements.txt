@@ -1,5 +1,5 @@
 streamlit
-pandas
+pandas==1.4.3
 plotly
 requests
 numpy
@@ -7,9 +7,12 @@ TA-lib --no-binary=TA-lib
 matplotlib
 vectorbt
 akshare
+bokeh==2.4.3
 streamlit_bokeh_events
 statsmodels
 streamlit_quill
 riskfolio-lib
 humanize
 seaborn
+pyEMD
+vmdPY

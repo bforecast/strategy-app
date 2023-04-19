@@ -86,7 +86,26 @@ def plot_pf(pf, name= "", select=True, bm_symbol=None, bm_price=None):
             st.text(pf.returns_stats())
             
     with tab2:
-        st.text(pf.orders.records_readable.sort_values(by=['Timestamp'])) 
+        records_df = pf.orders.records_readable
+        records_df['Date'] = pd.to_datetime(records_df['Timestamp']).dt.date
+        records_df['Amount'] = records_df['Price'] * records_df['Size'] - records_df['Fees']
+        # find the ticker's name in Columns
+        def find_ticker(x):
+            column = x.Column
+            result = ''
+            if type(column)==str:
+                result = column  # 'APPL'
+            elif type(column[-1])==str:
+                result = column[-1]  # (10, 5, 'APPL')
+            else:
+                result =name    # name = 'APPL
+            return result
+        
+        records_df['Ticker'] = records_df.apply(find_ticker, axis=1)
+        records_df = records_df[['Date', 'Ticker', 'Size', 'Price', 'Fees', 'Amount', 'Side']]
+        records_df.set_index('Date', inplace=True)
+        records_df.sort_index(inplace=True)
+        st.write(records_df) 
 
     # 4. save the stats and records to the html, and download    
     buffer.write("<style>table {text-align: right;}table thead th {text-align: center;}</style>")
@@ -95,7 +114,7 @@ def plot_pf(pf, name= "", select=True, bm_symbol=None, bm_price=None):
     df = pd.DataFrame({'Items': stats.index, 'Values': stats.values})
     df.to_html(buf=buffer, float_format='{:10.2f}'.format, index=False, border=1)
     buffer.write("<br><h4>Order's Records</h4>")
-    pf.orders.records_readable.sort_values(by=['Timestamp']).to_html(buf=buffer, index=False, float_format='{:10.2f}'.format, border=1)
+    records_df.to_html(buf=buffer, float_format='{:10.2f}'.format, border=1)
     buffer.write("<br><footer>Copyright (c) 2022 Brilliant Forecast Ltd. All rights reserved.</footer>")
 
     html_bytes = buffer.getvalue().encode()
