@@ -56,7 +56,7 @@ def plot_pf(pf, name= "", select=True, bm_symbol=None, bm_price=None):
     buffer.write(f"<h2>'{name}' Strategy-App Report</h2><br>")
 
     # 2.plot the pf
-    subplots = ['cum_returns','orders', 'trade_pnl', 'drawdowns']
+    subplots = ['cum_returns','orders', 'trade_pnl', 'drawdowns', 'cash']
     if select:
         subplots = st.multiselect("Select subplots:", Portfolio.subplots.keys(),
                     ['cum_returns','orders', 'trade_pnl', 'drawdowns', 'cash'], key='multiselect_'+name)
@@ -77,7 +77,7 @@ def plot_pf(pf, name= "", select=True, bm_symbol=None, bm_price=None):
         fig.write_html(buffer, include_plotlyjs='cdn')
 
     # 3.display the stats and recodes
-    tab1, tab2 = st.tabs(["Return's stats", "Orders' records"])
+    tab1, tab2, tab3 = st.tabs(["Return's stats", "Orders' records", "Final Positions"])
     with tab1:
         if bm_symbol:
             st.text(f'Benchmark is {bm_symbol}')
@@ -106,6 +106,21 @@ def plot_pf(pf, name= "", select=True, bm_symbol=None, bm_price=None):
         records_df.set_index('Date', inplace=True)
         records_df.sort_index(inplace=True)
         st.write(records_df.style.format({'Size':'{0:,.2f}', 'Price':'{0:,.2f}', 'Fees':'{0:,.4f}', 'Amount':'{0:,.2f}'}))
+        
+    with tab3:    
+        positions_df = pf.get_positions().records_readable
+        # st.write(positions_df)
+        positions_df = positions_df[(positions_df['Status'] == 'Open')]
+        if len(positions_df) >0:
+            positions_df['Ticker'] = positions_df.apply(find_ticker, axis=1)
+            positions_df['EntryDate'] = pd.to_datetime(positions_df['Entry Timestamp']).dt.date
+            positions_df['Value'] = positions_df['Avg Exit Price'] * positions_df['Size'] - positions_df['Entry Fees'] - positions_df['Exit Fees']
+            positions_df['Return'] = positions_df['Return']*100
+            positions_df = positions_df[['Ticker', 'EntryDate', 'Size', 'Avg Entry Price', 'PnL', 'Return', 'Value']]
+            positions_df.set_index('EntryDate', inplace=True)
+            st.write(positions_df.style.format({'Size':'{0:,.2f}', 'Avg Entry Price':'{0:,.2f}', 'PnL':'{0:,.4f}', 'Return':'{0:,.2f}%', 'Value':'{0:,.2f}'}))
+        st.text('Cash:     {:.2f}'.format(pf.cash()[-1]))
+        st.text('Total:    {:.2f}'.format(pf.value()[-1]))
 
     # 4. save the stats and records to the html, and download    
     buffer.write("<style>table {text-align: right;}table thead th {text-align: center;}</style>")

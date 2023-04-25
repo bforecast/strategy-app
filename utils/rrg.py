@@ -326,57 +326,19 @@ def plot_RRG(symbol_benchmark, stocks_df):
     rs_ratio_df = rs_ratio(stocks_df[sSel], stocks_df[symbol_benchmark], window)
     plot_AnimateRRG(rs_ratio_df, sSel, tail_length)
 
-# def RRG_Strategy(symbol_benchmark, stocks_df):
-#     col1, col2, col3, col4 =  st.columns([5, 1, 1, 1])
-#     symbols_target = []
-#     for s in stocks_df.columns:
-#         if s != symbol_benchmark:
-#             symbols_target.append(s)
-#     with col1:
-#         sSel = st.multiselect("Please select symbols:", symbols_target, 
-#                                 format_func=lambda x: x+'('+get_SymbolName(x)+')', 
-#                                 default = symbols_target)
-#         # symbols = st.multiselect(label ='symbols', options = symbols_target, default = symbols_target)
-#     with col2:
-#         period = st.selectbox('周期', ['D', 'W', 'M'], 1)
-#     with col3:
-#         window = st.selectbox('Window', [1, 5, 10, 12, 20, 50], 2)    
-#     with col4:
-#         tail_length = st.slider('尾线长度', 1, 60, 10)
-
-#     resample_df = stocks_df.resample(period).ffill()
-#     rs_ratio_df = rs_ratio(resample_df[sSel], resample_df[symbol_benchmark], window)
-#     plot_AnimateRRG(rs_ratio_df, sSel, tail_length)
-#     rs_ratio_df = rs_ratio_df.resample('D').ffill()
-
-#     init_vbtsetting()
-#     size = pd.DataFrame.vbt.empty_like(stocks_df[sSel], fill_value=0)
-#     for s in sSel:
-#         size[s] = rs_ratio_df.apply(ratio_filter, args=(s,), axis=1)
-#     size = size.div(size.sum(axis=1), axis=0)
-#     pf_kwargs = dict(fees=0.001, slippage=0.001, freq='1D')
-#     pf = vbt.Portfolio.from_orders(
-#                 stocks_df[sSel], 
-#                 size, 
-#                 size_type='targetpercent', 
-#                 group_by=True,  # group of two columns
-#                 cash_sharing=True,  # share capital between columns
-#                 **pf_kwargs,
-#             )
-#     return pf
-
-def RRG_Strategy(symbol_benchmark, stocks_df):
+# @vbt.cached_method
+def RRG_Strategy(symbol_benchmark, stocks_df, output_bool=False):
     stocks_df[stocks_df<0] = np.nan
     symbols_target = []
     for s in stocks_df.columns:
         if s != symbol_benchmark:
             symbols_target.append(s)
-
-    sSel = st.multiselect("Please select symbols:", symbols_target, 
-                            format_func=lambda x: get_SymbolName(x)+'('+x+')', 
-                            default = symbols_target)
+    sSel = symbols_target
+    # sSel = st.multiselect("Please select symbols:", symbols_target, 
+    #                         format_func=lambda x: get_SymbolName(x)+'('+x+')', 
+    #                         default = symbols_target)
     # Build param grid
-    rs_ratio_mins = [98, 98.5, 99, 99.5, 100, 100.5, 101, 101.5, 102]
+    rs_ratio_mins = [98, 99, 100, 101, 102]
     rs_momentum_mins = [98, 98.5, 99, 99.5, 100, 100.5, 101, 101.5, 102]
     windows = [60, 100, 150, 200, 225, 250, 275, 300]
 
@@ -399,13 +361,16 @@ def RRG_Strategy(symbol_benchmark, stocks_df):
         idxmax = pf.total_return().idxmax()
         st.write(f"The Max Total_return is {param_columns.names}:{idxmax}")
         pf = pf[idxmax]
-        rs_df = pd.DataFrame()
-        for s in sSel:
-            rs_df[s+'_rs_ratio'] = RRG_indicator.rs_ratio[idxmax][s]
-            rs_df[s+'_rs_momentum'] = RRG_indicator.rs_momentum[idxmax][s]
-        # plot_RatioMomentum(stocks_df, rs_df, sSel[0:1], symbol_benchmark)
-        rs_df.dropna(inplace=True)
-        plot_AnimateRRG(rs_df, sSel, 6, idxmax)
+
+        if output_bool:
+            rs_df = pd.DataFrame()
+            for s in sSel:
+                rs_df[s+'_rs_ratio'] = RRG_indicator.rs_ratio[idxmax][s]
+                rs_df[s+'_rs_momentum'] = RRG_indicator.rs_momentum[idxmax][s]
+        
+            # plot_RatioMomentum(stocks_df, rs_df, sSel[0:1], symbol_benchmark)
+            rs_df.dropna(axis=0, how='all', inplace=True)
+            plot_AnimateRRG(rs_df, sSel, 6, idxmax)
     return pf
 
 def ratio_filter(x, s):

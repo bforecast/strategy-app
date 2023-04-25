@@ -1,0 +1,35 @@
+{
+    "US" : {
+        "benchmark" : "SPY", 
+        "group" : {
+                "SPDR": ["XLB", "XLC", "XLE", "XLF", "XLI", "XLK", "XLP", "XLRE", "XLU", "XLV", "XLY"],
+                "EW_Sector": ["RCD", "RYH", "RYT", "RGI", "RHS", "RTM", "RYF", "RSP", "RYE", "RYU", "EQAL", "EWRE", "QQEW", "TLT", "EMLC", "EEM" ],
+                "Feat" : ["TLT", "EQAL", "RYF", "EMLC", "EWRE", "RTM", "RYE", "EEM", "RYT", "RYU", "RHS"],
+                "Market": ["IVV", "IWM", "QQQ", "DIA"],
+                "Country": ["IVV", "MCHI", "EWJ", "EWH", "EWU", "EWG"],
+                "ishares 5 factors" : ["MTUM", "QUAL", "SIZE", "USMV", "VLUE"]
+            }
+        },
+    "CN" : {
+        "benchmark" : "sh000001",
+        "group" : {
+                "market": ["sh000016", "sh000300", "sz399006", "sh000905", "sh000852"],
+                "一级行业":["sh510880", "sh510300", "sh510050", "sh515030", "sh518880", "sh510220",
+                    "sz159915", "sh510180", "sh510170", "sz159949", "sh510630", "sh515050", 
+                    "sh512660", "sh510710", "sz159920", "sh515650", "sh512480", "sh512660", 
+                    "sh515650"],
+                "11行业": ["sh512690", "sh512010", "sh516660", "sh515220", "sh516950",
+                        "sh512660", "sh512880", "sz159870", "sh512800","sh512200",
+                        "sh512400"],
+                "A股场内基金": [
+                            "sh513050", "sh512970", "sh518880",
+                            "sh512800", "sh512880", "sh512070", "sh510230", "sh512200",
+                            "sz159938", "sh512170", "sz159996", "sh515650", "sh512690", 
+                            "sz161130", "sz151125", "sz151128", "sz151127", "sz151126"
+                ]        
+                }
+        },
+    "HK" : {
+        "benchmark" : "80000"
+    }
+}
