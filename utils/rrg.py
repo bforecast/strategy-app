@@ -13,7 +13,8 @@ import plotly.graph_objs as go
 from plotly.subplots import make_subplots # creating subplots
 
 from utils.db import get_SymbolName
-from utils.vbt import init_vbtsetting
+from utils.vbt import init_vbtsetting, plot_CSCV
+
 
 
 # RRG functions
@@ -327,7 +328,7 @@ def plot_RRG(symbol_benchmark, stocks_df):
     plot_AnimateRRG(rs_ratio_df, sSel, tail_length)
 
 # @vbt.cached_method
-def RRG_Strategy(symbol_benchmark, stocks_df, output_bool=False):
+def RRG_Strategy(symbol_benchmark, stocks_df, RARM_obj= '',output_bool=False):
     stocks_df[stocks_df<0] = np.nan
     symbols_target = []
     for s in stocks_df.columns:
@@ -358,8 +359,13 @@ def RRG_Strategy(symbol_benchmark, stocks_df, output_bool=False):
                 **pf_kwargs,
             )
     if not isinstance(pf.total_return(), np.float64):
-        idxmax = pf.total_return().idxmax()
-        st.write(f"The Max Total_return is {param_columns.names}:{idxmax}")
+        RARMs = eval(f"pf.{RARM_obj}()")
+        idxmax = RARMs[RARMs != np.inf].idxmax()
+        # idxmax = pf.total_return().idxmax()
+        st.write(f"The Max {RARM_obj} is {param_columns.names}:{idxmax}")
+        if output_bool:
+           plot_CSCV(pf, idxmax, RARM_obj)
+
         pf = pf[idxmax]
 
         if output_bool:

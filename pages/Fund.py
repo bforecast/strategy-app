@@ -234,10 +234,16 @@ def run():
 
     else:
         st.text("根据相对轮动图的rs_ratio、rs_momentum的值对于生成轮动策略，计算最优回报解")
-        showRRG_bool = st.checkbox("Show Relative Rotation Graphs")
+        col1, col2 = st.columns(2)
+        with col1:
+            RARM_obj = st.selectbox('Risk Adjusted Return Method', 
+                            ['sharpe_ratio', 'annualized_return', 'deflated_sharpe_ratio', 'calmar_ratio', 'sortino_ratio', 
+                            'omega_ratio', 'information_ratio', 'tail_ratio'])
+        with col2:
+            showRRG_bool = st.checkbox("Show Relative Rotation Graphs")
         symbolsDate_dict['symbols'] += [symbol_benchmark]
         stocks_df = get_stocks(symbolsDate_dict,'close')
-        pf = RRG_Strategy(symbol_benchmark, stocks_df, showRRG_bool)
+        pf = RRG_Strategy(symbol_benchmark, stocks_df, RARM_obj, showRRG_bool)
 
         st.write("**组合回报表现(Porfolio's Performance)**")
         plot_pf(pf, bm_symbol=symbol_benchmark, bm_price=stocks_df[symbol_benchmark], select=False)
