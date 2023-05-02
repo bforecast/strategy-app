@@ -328,7 +328,7 @@ def plot_RRG(symbol_benchmark, stocks_df):
     plot_AnimateRRG(rs_ratio_df, sSel, tail_length)
 
 # @vbt.cached_method
-def RRG_Strategy(symbol_benchmark, stocks_df, RARM_obj= '',output_bool=False):
+def RRG_Strategy(symbol_benchmark, stocks_df, RARM_obj= 'sharpe_ratio', output_bool=False):
     stocks_df[stocks_df<0] = np.nan
     symbols_target = []
     for s in stocks_df.columns:

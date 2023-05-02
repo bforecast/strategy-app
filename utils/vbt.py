@@ -215,11 +215,11 @@ def display_pfbrief(pf, param_dict:dict):
     maxdrawdown = round(pf.stats('max_dd')[0]/100.0, 2)
     annual_return = pf.annualized_return()
 
-    cols = st.columns([1, 1, 1, 1, 4])
+    cols = st.columns([1, 1, 1, 1, 3])
     with cols[0]:
         st.metric('Annualized', "{0:.0%}".format(annual_return))
     with cols[1]:
-        st.metric('Lastday Return', "{0:.1%}".format(lastday_return))
+        st.metric('Lastday Ret', "{0:.1%}".format(lastday_return))
     with cols[2]:
         st.metric('Sharpe Ratio', '%.2f'% sharpe_ratio)
     with cols[3]:
