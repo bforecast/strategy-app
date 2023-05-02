@@ -130,7 +130,7 @@ def run():
     fund_engine.readStocks(fund_name)
         
     # 1. display selected fund's information
-    st.subheader(fund_engine.fund_name)
+    st.subheader(fund_engine.fund_name+"("+fund_engine.fund_ticker+")")
     df = fund_engine.fund_df
     market = fund_engine.market
 
@@ -146,7 +146,7 @@ def run():
                 st.write('**Top 10 holdings(%):**')
     with col4:
                 st.write(df["Stock"].count())
-                st.write(round(df["Portfolio (%)"].iloc[0:10].sum(),2))
+                st.write("{}%".format(round(df["Portfolio (%)"].iloc[0:10].sum(),2)))
 
     with st.expander("Portfolio Table"):
         st.dataframe(df[['Stock', 'Portfolio (%)']]

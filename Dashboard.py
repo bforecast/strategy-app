@@ -6,7 +6,7 @@ import json
 
 import streamlit as st
 
-# st.set_page_config(initial_sidebar_state='collapsed',)
+st.set_page_config(page_title="BForecast Strategy App")
 
 import vectorbt as vbt
 from bokeh.models import ColumnDataSource, CustomJS, DateFormatter, NumberFormatter

@@ -9,6 +9,7 @@ from plotly.subplots import make_subplots
 
 from vectorbt.portfolio.base import Portfolio
 from .overfitting import CSCV
+from utils.db import get_SymbolName
 
 def plot_allocation(rb_pf, symbols):
     # Plot weights development of the portfolio
@@ -79,13 +80,15 @@ def plot_pf(pf, name= "", select=True, bm_symbol=None, bm_price=None):
     # 3.display the stats and recodes
     tab1, tab2, tab3 = st.tabs(["Return's stats", "Orders' records", "Final Positions"])
     with tab1:
+        # show Return's stats
         if bm_symbol:
-            st.text(f'Benchmark is {bm_symbol}')
+            st.text(f'Benchmark is {get_SymbolName(bm_symbol)}({bm_symbol})')
             st.text(pf.returns_stats(benchmark_rets=bm_price.vbt.to_returns())) 
         else:
             st.text(pf.returns_stats())
             
     with tab2:
+        # show Orders' Records
         records_df = pf.orders.records_readable
         records_df['Date'] = pd.to_datetime(records_df['Timestamp']).dt.date
         records_df['Amount'] = records_df['Price'] * records_df['Size'] - records_df['Fees']
@@ -102,21 +105,24 @@ def plot_pf(pf, name= "", select=True, bm_symbol=None, bm_price=None):
             return result
         
         records_df['Ticker'] = records_df.apply(find_ticker, axis=1)
-        records_df = records_df[['Date', 'Ticker', 'Size', 'Price', 'Fees', 'Amount', 'Side']]
+        records_df['StockName'] = records_df.apply(lambda x: get_SymbolName(x['Ticker']), axis=1)
+        records_df = records_df[['Date', 'Ticker', 'StockName', 'Size', 'Price', 'Fees', 'Amount', 'Side']]
         records_df.set_index('Date', inplace=True)
-        records_df.sort_index(inplace=True)
+        records_df.sort_index(ascending=False , inplace=True)
         st.write(records_df.style.format({'Size':'{0:,.2f}', 'Price':'{0:,.2f}', 'Fees':'{0:,.4f}', 'Amount':'{0:,.2f}'}))
         
-    with tab3:    
+    with tab3:
+        # show Finaal Positions    
         positions_df = pf.get_positions().records_readable
         # st.write(positions_df)
         positions_df = positions_df[(positions_df['Status'] == 'Open')]
         if len(positions_df) >0:
             positions_df['Ticker'] = positions_df.apply(find_ticker, axis=1)
+            positions_df['StockName'] = positions_df.apply(lambda x: get_SymbolName(x['Ticker']), axis=1)
             positions_df['EntryDate'] = pd.to_datetime(positions_df['Entry Timestamp']).dt.date
             positions_df['Value'] = positions_df['Avg Exit Price'] * positions_df['Size'] - positions_df['Entry Fees'] - positions_df['Exit Fees']
             positions_df['Return'] = positions_df['Return']*100
-            positions_df = positions_df[['Ticker', 'EntryDate', 'Size', 'Avg Entry Price', 'PnL', 'Return', 'Value']]
+            positions_df = positions_df[['Ticker', 'StockName', 'EntryDate', 'Size', 'Avg Entry Price', 'PnL', 'Return', 'Value']]
             positions_df.set_index('EntryDate', inplace=True)
             st.write(positions_df.style.format({'Size':'{0:,.2f}', 'Avg Entry Price':'{0:,.2f}', 'PnL':'{0:,.4f}', 'Return':'{0:,.2f}%', 'Value':'{0:,.2f}'}))
         st.text('Cash:     {:.2f}'.format(pf.cash()[-1]))

@@ -81,6 +81,7 @@ class fe_etfdb(fundEngine):
         df["Portfolio (%)"] = df["Portfolio (%)"].apply(lambda x: pd.to_numeric(x.split("%")[0]))
         df.index = df['Ticker']
 
+        self.fund_ticker = fund_ticker
         self.fund_name = name
         self.fund_update_date = portfolio_date
         self.fund_period = portfolio_date
@@ -94,9 +95,19 @@ class fe_dataroma(fundEngine):
                 "AM", "aq", "oc", "HC", "SAM", "PI", "DA", "BAUPOST", "FS", "GR"]
     funds_name = funds
     
+    def __init__(self):
+        try:
+            funds_df = getSuperInvestors()
+            self.funds = funds_df['ticker'].tolist()
+            self.funds_name = funds_df['Portfolio Manager - Firm'].tolist()
+        except ValueError as ve:
+            st.write(f"Get {self.name} data error: {ve}")
+
+
     @vbt.cached_method
-    def readStocks(self, fund_ticker:str):
-        name, period, portfolio_date, df = getData(fund_ticker)
+    def readStocks(self, fund_name:str):
+        self.fund_ticker = self.funds[self.funds_name.index(fund_name)]
+        name, period, portfolio_date, df = getData(self.fund_ticker)
         self.fund_name = name
         self.fund_period = period
         self.fund_update_date = portfolio_date
@@ -106,22 +117,21 @@ class fe_dataroma(fundEngine):
 class fe_akshare(fundEngine):
     name = "天天基金网-3家5星"
     market = "CN"
-    fund_rating_all_df = pd.DataFrame()
 
     def __init__(self):
         try:
             fund_rating_all_df = ak.fund_rating_all()
-            self.fund_rating_all_df = fund_rating_all_df[(fund_rating_all_df['5星评级家数']==3) & (fund_rating_all_df['类型']=='混合型-偏股')]
-            self.funds = self.fund_rating_all_df['代码'].tolist()
-            self.funds_name = self.fund_rating_all_df['简称'].tolist()
+            fund_rating_all_df = fund_rating_all_df[(fund_rating_all_df['5星评级家数']==3) & (fund_rating_all_df['类型']=='混合型-偏股')]
+            self.funds = fund_rating_all_df['代码'].tolist()
+            self.funds_name = fund_rating_all_df['简称'].tolist()
         except ValueError as ve:
             st.write(f"Get {self.name} data error: {ve}")
         
     @vbt.cached_method
     def readStocks(self, fund_name: str):
         try:
-            fund_ticker = self.funds[self.funds_name.index(fund_name)]
-            df = ak.fund_portfolio_hold_em(symbol=fund_ticker, date=datetime.date.today().strftime('%Y'))
+            self.fund_ticker = self.funds[self.funds_name.index(fund_name)]
+            df = ak.fund_portfolio_hold_em(symbol=self.fund_ticker, date=datetime.date.today().strftime('%Y'))
             # Column name corrections.
             df = df[(df["季度"] == df['季度'][0])]
             self.fund_period = df['季度'][0][0:8]
@@ -130,11 +140,12 @@ class fe_akshare(fundEngine):
             df = df.rename(columns={"股票名称": "Stock"})
             df = df.rename(columns={"占净值比例": "Portfolio (%)"})
             df.index = df['Ticker']
-            self.fund_name = self.fund_rating_all_df.loc[self.fund_rating_all_df['代码']==fund_ticker, '简称'].values[0]
+            # self.fund_name = self.fund_rating_all_df.loc[self.fund_rating_all_df['代码']==fund_ticker, '简称'].values[0]
+            self.fund_name = fund_name
             self.fund_update_date = datetime.date.today().strftime('%Y-%m-%d')
             self.fund_df = df
         except ValueError as ve:
-            st.write(f"Get {self.name}-{fund_ticker} data error: {ve}")
+            st.write(f"Get {self.name}-{self.fund_ticker} data error: {ve}")
         return
     
 def get_fundSources():
