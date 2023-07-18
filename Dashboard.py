@@ -9,9 +9,6 @@ import streamlit as st
 st.set_page_config(page_title="BForecast Strategy App")
 
 import vectorbt as vbt
-from bokeh.models import ColumnDataSource, CustomJS, DateFormatter, NumberFormatter
-from bokeh.models import DataTable, TableColumn
-from streamlit_bokeh_events import streamlit_bokeh_events
 
 from utils.vbt import plot_pf
 from utils.component import check_password, params_selector
@@ -23,55 +20,36 @@ from utils.vbt import display_pfbrief
 
 import config
 
-def bokehTable(portfolio_df, update_bokeh=True):
-        portfolio_df = portfolio_df[['name', 'annual_return','lastday_return', 'sharpe_ratio', 'total_return', 'maxdrawdown', 'symbols', 'end_date']]
-        cds = ColumnDataSource(portfolio_df)
-        columns = [
-                    TableColumn(field='name', title='Name', width=200),
-                    TableColumn(field='annual_return', title='Annualized', width=120, formatter=NumberFormatter(format='0:.0%', text_align='right')),
-                    TableColumn(field='lastday_return', title='Lastday Return', width=120, formatter=NumberFormatter(format='0:.0%', text_align='right')),
-                    TableColumn(field='sharpe_ratio', title='Sharpe Ratio', width=120, formatter=NumberFormatter(format='0.00', text_align='right')),
-                    TableColumn(field='total_return', title='Total Return', width=120, formatter=NumberFormatter(format='0:.0%', text_align='right')),
-                    TableColumn(field='maxdrawdown', title='Max DD', width=120, formatter=NumberFormatter(format='0:.0%', text_align='right')),
-                    TableColumn(field='symbols', title='Symbols', width=120),
-                    TableColumn(field='end_date', title='End Date', width=120,),
-                    # TableColumn(field='description', title='Parameters')
-                    ]
-        # define events
-        cds.selected.js_on_change(
-                "indices",
-                CustomJS(
-                    args=dict(source=cds),
-                    code="""
-                    document.dispatchEvent(
-                        new CustomEvent("INDEX_SELECT", {detail: {data: source.selected.indices}})
+def select_portfolios(portfolio_df, update_bokeh=True):
+        df_with_selections = portfolio_df.copy()
+        df_with_selections.set_index('id', inplace=True)
+        df_with_selections.insert(0, "Select", False)
+        # display in 100% percentage format
+        df_with_selections['annual_return'] *= 100
+        df_with_selections['lastday_return'] *= 100
+        df_with_selections['total_return'] *= 100
+        df_with_selections['maxdrawdown'] *= 100
+
+        edited_df = st.data_editor(
+                        df_with_selections,
+                        hide_index=True,
+                        use_container_width=True,
+                        column_order=['Select','name', 'annual_return','lastday_return', 'sharpe_ratio', 'total_return', 'maxdrawdown', 'symbols', 'end_date'],
+                        column_config={
+                                "Select":           st.column_config.CheckboxColumn(required=True, width='small'),
+                                "sharpe_ratio":     st.column_config.Column(width='small'),
+                                "annual_return":    st.column_config.NumberColumn(required=True, format='%i%%', width='small'),
+                                "lastday_return":    st.column_config.NumberColumn(required=True, format='%.1f%%', width='small'),    
+                                "total_return":    st.column_config.NumberColumn(required=True, format='%i%%', width='small'),    
+                                "maxdrawdown":    st.column_config.NumberColumn(required=True, format='%i%%', width='small'),        
+                            },
+                        disabled=['name', 'annual_return','lastday_return', 'sharpe_ratio', 'total_return', 'maxdrawdown', 'symbols', 'end_date'],
                     )
-                    """
-                )
-            )
-
-        table = DataTable(source=cds, columns=columns, row_height=33, selectable="checkbox",
-                        index_position = None, aspect_ratio='auto', scroll_to_selection=True, height=500, width=900)
-
-        result = streamlit_bokeh_events(
-                    bokeh_plot=table,
-                    events="INDEX_SELECT",
-                    key="foo",
-                    refresh_on_update=update_bokeh,
-                    # debounce_time=10,
-                    override_height=500
-                )
-        if result and result.get("INDEX_SELECT") and not update_bokeh:
-            idata = result.get("INDEX_SELECT")["data"]
-            cds_df = cds.to_df()
-            for i in idata:
-                if i not in cds_df.index.values:
-                    return []
-            return cds_df.loc[idata, 'index'].to_list()
-        else:
-            return []
+        selected_ids = list(edited_df[edited_df.Select].index)
+        return selected_ids
 
 def show_PortfolioTable(portfolio_df):
+    ## using new st.data_editor
     def stringlist_to_set(strlist: list):
         slist = []
         for sstr in strlist:
@@ -106,7 +84,7 @@ def show_PortfolioTable(portfolio_df):
 
     update_bokeh = (update_bokeh or st.session_state['update_bokeh'])
     df = selectpf_bySymbols(portfolio_df, st.session_state['symbolsSel'])
-    selectpf = bokehTable(df, update_bokeh)
+    selectpf = select_portfolios(df, update_bokeh)
     st.session_state['update_bokeh'] = False
     return(selectpf)
 
@@ -114,7 +92,7 @@ def show_PortforlioDetail(portfolio_df, index):
     if index > -1 and (index in portfolio_df.index):
         st.info('Selected portfolio:    ' + portfolio_df.at[index, 'name'])
         param_dict = json.loads(portfolio_df.at[index, 'param_dict'])
-        display_pfbrief(pf=vbt.Portfolio.loads(portfolio_df.loc[index, 'vbtpf']), param_dict=param_dict)
+        display_pfbrief(pf=vbt.Portfolio.loads(portfolio_df.at[index, 'vbtpf']), param_dict=param_dict)
         st.markdown("**Description**")
         st.markdown(portfolio_df.at[index, 'description'], unsafe_allow_html=True)
         return True
@@ -151,7 +129,7 @@ def show_PortforlioYearly(pf_row):
         strategy = strategy_cli(symbolsDate_dict)
 
         if check_params(params):
-            if strategy.maxSR(params, output_bool=False):
+            if strategy.maxRARM(params, output_bool=False):
                 st.text("Max Sharpe_Ratio's parameters:    " + str(strategy.param_dict))
                 pfYearly_df = pfYearly_df.append({
                             "year": y,
@@ -177,9 +155,9 @@ def main():
         value_df = pd.DataFrame()
         position_df = pd.DataFrame()
         for index in selected_pfs:
-            pf = vbt.Portfolio.loads(portfolio.df.iloc[index].at['vbtpf'])
-            value_df[portfolio.df.iloc[index].at['name']] = pf.value()
-            position_df[portfolio.df.iloc[index].at['name']] = pf.position_mask()
+            pf = vbt.Portfolio.loads(portfolio.df.loc[index, 'vbtpf'])
+            value_df[portfolio.df.loc[index, 'name']] = pf.value()
+            position_df[portfolio.df.loc[index, 'name']] = pf.position_mask()
             show_PortforlioDetail(portfolio.df, index)
         # value_df = value_df.cumsum()
         value_df.fillna(method='ffill', inplace=True)
@@ -252,10 +230,11 @@ def main():
                     st.error('Fail to load pf.')
                     
             if morepf_bool:
-                show_PortforlioYearly(portfolio.df.iloc[index, :])
+                show_PortforlioYearly(portfolio.df.loc[index, :])
             if updatepf_bool:
-                if portfolio.update(portfolio.df.loc[index, 'id']):
+                if portfolio.update(index):
                     st.success('Update portfolio Sucessfully.')
+                    st.experimental_rerun()
                 else:
                     st.error('Fail to update portfolio.')
                 st.session_state['update_bokeh'] = True
@@ -278,9 +257,9 @@ def main():
             num_portfolio = len(portfolio.df)
             info_holder = st.empty()
             for i in range(num_portfolio):
-                info_holder.write(f"updating portfolio('{portfolio.df.loc[i, 'name']}')")
-                if not portfolio.update(portfolio.df.loc[i, 'id']):
-                    st.error(f"Fail to update portfolio('{portfolio.df.loc[i, 'name']}')")
+                info_holder.write(f"updating portfolio('{portfolio.df.iloc[i]['name']}')")
+                if not portfolio.update(portfolio.df.iloc[i]['id']):
+                    st.error(f"Fail to update portfolio('{portfolio.df.iloc[i]['name']}')")
                 update_bar.progress(i / (num_portfolio-1))
                 info_holder.empty()
 
@@ -288,6 +267,4 @@ def main():
 
 if __name__ == "__main__":
     if check_password():
-        # provider_uri = "e:/qlib_data/cn"  # target_dir
-        # qlib.init(provider_uri=provider_uri, region=REG_CN)
         main()

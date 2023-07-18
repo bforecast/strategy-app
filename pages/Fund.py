@@ -195,13 +195,6 @@ def run():
         st.write("**资产层次聚类(Assets Clusters)**")
         with st.expander("The codependence or similarity matrix: pearson; Linkage method of hierarchical clustering: ward"):
             plot_AssetsClusters(stocks_df)
-        # # 2.1.5 plot RRG
-        # st.write("**相对轮动图策略(RRG)**")
-        # with st.expander("根据相对轮动图的rs_ratio、rs_momentum的值对于生成轮动策略，计算最优回报解"):
-        #     symbolsDate_dict['symbols'] += [symbol_benchmark]
-        #     stocks_df = get_stocks(symbolsDate_dict,'close')
-        #     pf = RRG_Strategy(symbol_benchmark, stocks_df)
-        #     plot_pf(pf, bm_symbol=symbol_benchmark, bm_price=stocks_df[symbol_benchmark], select=True)
             
     elif subpage == 'Max Sharpe Weights':
         # 2.2.1 calculate the optimized max sharpe ratio's portfolio.
@@ -246,7 +239,7 @@ def run():
         pf = RRG_Strategy(symbol_benchmark, stocks_df, RARM_obj, showRRG_bool)
 
         st.write("**组合回报表现(Porfolio's Performance)**")
-        plot_pf(pf, bm_symbol=symbol_benchmark, bm_price=stocks_df[symbol_benchmark], select=False)
+        plot_pf(pf, name=fund_name+'-RRG', bm_symbol=symbol_benchmark, bm_price=stocks_df[symbol_benchmark], select=False)
 
 if check_password():
     run()

@@ -292,7 +292,7 @@ class PairTradeStrategy(BaseStrategy):
 
     def maxRARM(self, param, output_bool=False):
         if len(self.stock_dfs) > 1:
-            return super(PairTradeStrategy, self).maxSR(param, output_bool)
+            return super(PairTradeStrategy, self).maxRARM(param, output_bool)
         else:
             return False
     

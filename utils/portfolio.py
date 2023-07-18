@@ -30,6 +30,7 @@ class Portfolio(object):
     """
     def __init__(self):
         self.df = pd.read_sql("SELECT * FROM portfolio", connection)
+        self.df.set_index('id', inplace=True, drop=False)
 
     def add(self, symbolsDate_dict:dict, strategyname:str, strategy_param, pf, description="desc")->bool:
         """
@@ -183,6 +184,7 @@ class Portfolio(object):
                 cursor.execute("UPDATE portfolio SET end_date=?, total_return=?, lastday_return=?, annual_return=?, sharpe_ratio=?, maxdrawdown=?, vbtpf=? WHERE id=?",
                         (end_date, total_return,lastday_return, annual_return, sharpe_ratio, maxdrawdown, pf_blob, id))
                 connection.commit()
+                self.__init__()
 
         except FileNotFoundError as e:
             print(e)

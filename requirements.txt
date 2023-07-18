@@ -3,12 +3,10 @@ pandas==1.4.3
 plotly
 requests
 numpy
-ta-lib-bin
+ta-lib
 matplotlib
 vectorbt
 akshare
-bokeh==2.4.3
-streamlit_bokeh_events
 statsmodels
 streamlit_quill
 riskfolio-lib
@@ -17,3 +15,4 @@ seaborn
 EMD-signal
 vmdPY
 tftb
+
