@@ -3,7 +3,7 @@ pandas==1.4.3
 plotly
 requests
 numpy
-ta-lib
+ta-lib-bin
 matplotlib
 vectorbt
 akshare
